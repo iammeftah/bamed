@@ -1,30 +1,59 @@
-import { Geist, Geist_Mono } from "next/font/google"
+import type { Metadata } from "next";
+import { Barlow_Condensed, Manrope, Geist_Mono } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { MotionProvider } from "@/components/landing/motion-provider";
+import { SiteHeader } from "@/components/site/site-header";
+import "./globals.css";
 
-import "./globals.css"
-import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
-
-const geist = Geist({subsets:['latin'],variable:'--font-sans'})
-
-const fontMono = Geist_Mono({
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  variable: "--font-mono",
-})
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const barlow = Barlow_Condensed({
+  variable: "--font-barlow",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  title: "BAMED | Mode homme premium",
+  description:
+    "BAMED : la mode homme premium du quotidien, des coupes nettes pensées pour bouger avec vous.",
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html
-      lang="en"
+      lang="fr"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", geist.variable)}
+      data-scroll-behavior="smooth"
+      className="motion-safe:scroll-smooth"
     >
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
+      <body
+        className={`${manrope.variable} ${geistMono.variable} ${barlow.variable} font-sans antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <MotionProvider>
+            <SiteHeader />
+            {children}
+          </MotionProvider>
+        </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
