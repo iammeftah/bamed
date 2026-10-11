@@ -1,0 +1,14 @@
+# secrets: never commit these
+.env
+.env.*
+!.env.example
+
+# OS and editor
+.DS_Store
+.idea/
+.vscode/
+
+# archives and build output
+*.zip
+dist/
+build/
