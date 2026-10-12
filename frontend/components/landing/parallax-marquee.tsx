@@ -18,11 +18,13 @@ const rows = [
     phrases: ["Coupe nette", "Porté facile", "Pensé pour bouger"],
     speed: -3,
     outline: false,
+    z: 100,
   },
   {
     phrases: ["Le style sans effort", "Basiques premium", "BAMED"],
     speed: 3,
     outline: true,
+    z: -100,
   },
 ];
 
@@ -72,10 +74,12 @@ function ParallaxRow({
   phrases,
   speed,
   outline,
+  z,
 }: {
   phrases: string[];
   speed: number;
   outline: boolean;
+  z: number;
 }) {
   const reduce = useReducedMotion();
   const baseX = useMotionValue(0);
@@ -103,7 +107,11 @@ function ParallaxRow({
   });
 
   return (
-    <div className="overflow-hidden py-2 md:py-3">
+    <div
+      className="overflow-hidden py-2 md:py-3"
+      // The first row floats toward you, the second sinks away
+      style={reduce ? undefined : { transform: `translateZ(${z}px)` }}
+    >
       <motion.div style={{ x }} className="flex w-max will-change-transform">
         <Group phrases={phrases} outline={outline} />
         <Group phrases={phrases} outline={outline} hidden />
@@ -113,14 +121,34 @@ function ParallaxRow({
 }
 
 export function ParallaxMarquee() {
+  const ref = useRef<HTMLElement>(null);
+  const reduce = useReducedMotion();
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"],
+  });
+  // The band lies back as it enters, faces you in the middle, and tips away as it leaves
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [24, 0, -24]);
+  const rotateZ = useTransform(scrollYProgress, [0, 0.5, 1], [-2, 0, 2]);
+
   return (
     <section
+      ref={ref}
       aria-label="Slogans BAMED"
-      className="overflow-hidden bg-background py-12 md:py-20"
+      className="overflow-hidden bg-background py-16 md:py-28"
+      style={{ perspective: 1400 }}
     >
-      {rows.map((row) => (
-        <ParallaxRow key={row.phrases[0]} {...row} />
-      ))}
+      <motion.div
+        style={
+          reduce
+            ? undefined
+            : { rotateX, rotateZ, transformStyle: "preserve-3d" }
+        }
+      >
+        {rows.map((row) => (
+          <ParallaxRow key={row.phrases[0]} {...row} />
+        ))}
+      </motion.div>
     </section>
   );
 }
