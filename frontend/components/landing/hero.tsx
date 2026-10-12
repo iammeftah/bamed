@@ -2,7 +2,6 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform, type Variants } from "motion/react";
-import { Sparkles } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { CtaButton } from "@/components/landing/cta-button";
 import { images } from "@/lib/products";
@@ -51,6 +50,7 @@ export function Hero() {
           tone="dark"
           sizes="100vw"
           priority
+          rounded={false}
         />
       </motion.div>
       <div className="absolute inset-0 -z-10 bg-linear-to-t from-black/85 via-black/25 to-black/50" />
@@ -60,9 +60,8 @@ export function Hero() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease, delay: 0.1 }}
-          className="mb-4 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-gold sm:text-sm"
+          className="mb-4 text-xs font-semibold uppercase tracking-[0.22em] text-gold sm:text-sm"
         >
-          <Sparkles className="size-4" aria-hidden />
           Nouvelle saison homme
         </motion.p>
 

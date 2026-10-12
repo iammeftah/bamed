@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { BadgePercent, Heart, ShoppingBag, Sparkles } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { formatNumber, type Product } from "@/lib/products";
 
@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="product-card flex flex-col">
-      <div className="relative overflow-hidden bg-muted">
+      <div className="relative isolate overflow-hidden rounded-xl bg-muted">
         <a href="#" tabIndex={-1} aria-hidden="true" className="block">
           <div className="zoom-img">
             <ImagePlaceholder
@@ -32,15 +32,10 @@ export function ProductCard({ product }: { product: Product }) {
           <span
             className={
               product.tag === "Nouveau"
-                ? "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gold-foreground sm:left-3 sm:top-3"
-                : "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-neutral-950 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white sm:left-3 sm:top-3"
+                ? "absolute left-2 top-2 inline-flex items-center rounded-full bg-gold px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-gold-foreground sm:left-3 sm:top-3"
+                : "absolute left-2 top-2 inline-flex items-center rounded-full bg-neutral-950 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider text-white sm:left-3 sm:top-3"
             }
           >
-            {product.tag === "Nouveau" ? (
-              <Sparkles className="size-3" aria-hidden />
-            ) : (
-              <BadgePercent className="size-3" aria-hidden />
-            )}
             {product.tag}
           </span>
         )}

@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { HeartHandshake, Leaf, Ruler, Scissors } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { ClosingCta } from "@/components/landing/closing-cta";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
@@ -13,22 +12,18 @@ export const metadata: Metadata = {
 
 const values = [
   {
-    icon: Scissors,
     title: "Des coupes nettes",
     text: "Des lignes simples et précises, pensées pour tomber juste sur la plupart des morphologies.",
   },
   {
-    icon: Leaf,
     title: "Des matières honnêtes",
     text: "Coton, lin, laine : des fibres choisies pour leur confort et leur tenue dans le temps.",
   },
   {
-    icon: Ruler,
     title: "Une taille fidèle",
     text: "Nos tailles correspondent à ce que vous attendez, pour limiter les retours.",
   },
   {
-    icon: HeartHandshake,
     title: "Un service humain",
     text: "Une question sur une taille ou une commande ? Une vraie personne vous répond.",
   },
@@ -113,9 +108,9 @@ export default function AProposPage() {
           </Reveal>
 
           <RevealGroup className="mt-12 grid gap-x-16 gap-y-14 sm:grid-cols-2 md:mt-16">
-            {values.map(({ icon: Icon, title, text }) => (
+            {values.map(({ title, text }) => (
               <RevealItem key={title}>
-                <Icon className="size-8 text-gold" strokeWidth={1.5} aria-hidden />
+                <span className="block h-px w-10 bg-gold" aria-hidden />
                 <h3 className="mt-5 text-xl font-semibold tracking-tight md:text-2xl">
                   {title}
                 </h3>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BadgeCheck } from "lucide-react";
 import { brands, type Brand } from "@/lib/products";
 
 /**
@@ -26,8 +25,7 @@ const config: Record<string, { kind: Kind; scale?: number }> = {
 
 const markClass =
   "opacity-70 grayscale hover:opacity-100 dark:opacity-80 dark:grayscale-0 dark:brightness-0 dark:invert dark:hover:opacity-100";
-const boxClass =
-  "rounded-[3px] opacity-80 grayscale hover:opacity-100";
+const boxClass = "rounded-xl opacity-80 grayscale hover:opacity-100";
 
 function Logo({ brand }: { brand: Brand }) {
   const [failed, setFailed] = useState(false);
@@ -84,8 +82,7 @@ function Group({ hidden = false }: { hidden?: boolean }) {
 export function BrandsMarquee() {
   return (
     <section aria-label="Nos marques" className="bg-background py-10 md:py-14">
-      <p className="mb-6 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-        <BadgeCheck className="size-4 text-gold" aria-hidden />
+      <p className="mb-6 text-center text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
         Nos marques
       </p>
       <div className="marquee marquee-reverse overflow-hidden py-4 [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">

@@ -1,4 +1,4 @@
-import { ArrowUpRight, LayoutGrid } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 import { categories } from "@/lib/products";
@@ -8,8 +8,7 @@ export function CategoryStrip() {
     <section className="bg-background py-16 md:py-24">
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
         <Reveal className="mb-8 md:mb-10">
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-            <LayoutGrid className="size-4 text-gold" aria-hidden />
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
             Collections
           </p>
           <h2 className="font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl">
@@ -22,7 +21,7 @@ export function CategoryStrip() {
             <RevealItem key={c.name}>
               <a
                 href={c.href}
-                className="group relative block overflow-hidden"
+                className="group relative isolate block overflow-hidden rounded-xl"
               >
                 <div className="transition-transform duration-700 ease-out group-hover:scale-105">
                   <ImagePlaceholder

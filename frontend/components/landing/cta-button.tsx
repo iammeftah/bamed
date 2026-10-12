@@ -1,15 +1,12 @@
-"use client";
-
 import type { ReactNode } from "react";
-import { motion } from "motion/react";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const variants = {
-  gold: "bg-gold text-gold-foreground sheen",
-  dark: "bg-foreground text-background",
-  light: "bg-white text-neutral-950",
-  outline: "border border-white/70 text-white hover:bg-white/10",
+  gold: "bg-gold text-gold-foreground hover:bg-gold/90",
+  dark: "bg-foreground text-background hover:bg-foreground/90",
+  light: "bg-white text-neutral-950 hover:bg-white/90",
+  outline: "border border-white/60 text-white hover:border-white",
 };
 
 export function CtaButton({
@@ -26,26 +23,16 @@ export function CtaButton({
   className?: string;
 }) {
   return (
-    <motion.a
+    <a
       href={href}
-      whileHover={{ scale: 1.03 }}
-      whileTap={{ scale: 0.97 }}
-      transition={{ type: "spring", stiffness: 400, damping: 25 }}
       className={cn(
-        "group relative inline-flex h-12 items-center justify-center overflow-hidden rounded-full px-6 text-base font-semibold whitespace-nowrap sm:px-8",
+        "inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold whitespace-nowrap transition-colors active:scale-[0.98]",
         variants[variant],
         className,
       )}
     >
-      <span className="relative z-10 inline-flex items-center gap-2">
-        {children}
-        {arrow && (
-          <ArrowRight
-            className="size-5 transition-transform duration-300 group-hover:translate-x-1"
-            aria-hidden
-          />
-        )}
-      </span>
-    </motion.a>
+      {children}
+      {arrow && <ArrowRight className="size-4" aria-hidden />}
+    </a>
   );
 }

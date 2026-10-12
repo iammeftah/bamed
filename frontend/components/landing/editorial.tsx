@@ -1,13 +1,9 @@
-import { ArrowRight, Scissors, Shirt, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { Reveal } from "@/components/landing/reveal";
 import { images } from "@/lib/products";
 
-const points = [
-  { icon: Scissors, label: "Coupes nettes" },
-  { icon: Sparkles, label: "Matières sincères" },
-  { icon: Shirt, label: "Pour tous les jours" },
-];
+const points = ["Coupes nettes", "Matières sincères", "Pour tous les jours"];
 
 export function Editorial() {
   return (
@@ -39,12 +35,11 @@ export function Editorial() {
           </p>
 
           <ul className="mt-8 flex flex-wrap gap-2">
-            {points.map(({ icon: Icon, label }) => (
+            {points.map((label) => (
               <li
                 key={label}
-                className="inline-flex items-center gap-2 rounded-full bg-background px-4 py-2 text-sm font-semibold"
+                className="inline-flex items-center rounded-full bg-background px-4 py-2 text-sm font-semibold"
               >
-                <Icon className="size-4 text-gold" aria-hidden />
                 {label}
               </li>
             ))}

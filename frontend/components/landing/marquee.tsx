@@ -1,5 +1,3 @@
-import { Diamond } from "lucide-react";
-
 const phrases = [
   "Mode homme du quotidien",
   "Coupé pour la vraie vie",
@@ -19,7 +17,10 @@ function Group({ hidden = false }: { hidden?: boolean }) {
           <span className="whitespace-nowrap font-display text-3xl font-bold uppercase leading-none sm:text-4xl md:text-6xl">
             {p}
           </span>
-          <Diamond className="size-4 shrink-0 fill-gold text-gold" aria-hidden />
+          <span
+            aria-hidden
+            className="size-2.5 shrink-0 rounded-full bg-gold"
+          />
         </li>
       ))}
     </ul>

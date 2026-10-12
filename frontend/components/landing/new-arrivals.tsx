@@ -1,4 +1,4 @@
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { ProductCard } from "@/components/landing/product-card";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 import { products } from "@/lib/products";
@@ -9,8 +9,7 @@ export function NewArrivals() {
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
         <Reveal className="mb-8 flex items-end justify-between gap-4 md:mb-10">
           <div>
-            <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              <Sparkles className="size-4 text-gold" aria-hidden />
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
               Fraîchement arrivé
             </p>
             <h2 className="font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl">

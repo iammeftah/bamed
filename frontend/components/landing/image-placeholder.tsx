@@ -23,6 +23,8 @@ type ImagePlaceholderProps = {
   tone?: "light" | "dark";
   sizes?: string;
   priority?: boolean;
+  /** Rounded corners (rounded-xl). Turn off for full-bleed images like the home hero. */
+  rounded?: boolean;
   className?: string;
 };
 
@@ -35,6 +37,7 @@ export function ImagePlaceholder({
   tone = "light",
   sizes = "100vw",
   priority = false,
+  rounded = true,
   className,
 }: ImagePlaceholderProps) {
   const [failed, setFailed] = useState(false);
@@ -55,6 +58,7 @@ export function ImagePlaceholder({
     <div
       className={cn(
         "relative w-full overflow-hidden",
+        rounded && "rounded-xl",
         fill && "h-full",
         dark ? "bg-neutral-900" : "bg-neutral-200 dark:bg-neutral-800",
         className,

@@ -64,7 +64,7 @@ function FeaturedCard({
     <a
       href="#"
       className={cn(
-        "group relative block aspect-[4/5] overflow-hidden bg-muted sm:aspect-[16/10] lg:aspect-auto",
+        "group relative isolate block aspect-[4/5] overflow-hidden rounded-xl bg-muted sm:aspect-[16/10] lg:aspect-auto",
         className,
       )}
     >

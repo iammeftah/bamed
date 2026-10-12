@@ -13,12 +13,12 @@ export function ThemeToggle({ className }: { className?: string }) {
       onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
       aria-label="Changer le thème clair ou sombre"
       className={cn(
-        "flex size-11 items-center justify-center rounded-full transition-colors hover:bg-current/10",
+        "flex size-10 items-center justify-center rounded-md transition-opacity hover:opacity-60 sm:size-9",
         className,
       )}
     >
-      <Moon className="size-5 dark:hidden" aria-hidden />
-      <Sun className="hidden size-5 dark:block" aria-hidden />
+      <Moon className="size-[18px] dark:hidden" aria-hidden />
+      <Sun className="hidden size-[18px] dark:block" aria-hidden />
     </button>
   );
 }

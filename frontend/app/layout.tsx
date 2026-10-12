@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Barlow_Condensed, Manrope, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MotionProvider } from "@/components/landing/motion-provider";
+import { AuthProvider } from "@/components/auth/auth-provider";
 import { SiteHeader } from "@/components/site/site-header";
+import { SiteFooter } from "@/components/site/site-footer";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -49,8 +51,11 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <MotionProvider>
-            <SiteHeader />
-            {children}
+            <AuthProvider>
+              <SiteHeader />
+              {children}
+              <SiteFooter />
+            </AuthProvider>
           </MotionProvider>
         </ThemeProvider>
       </body>

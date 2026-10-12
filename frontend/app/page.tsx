@@ -3,6 +3,7 @@ import { TrustStrip } from "@/components/landing/trust-strip";
 import { BrandsMarquee } from "@/components/landing/brands-marquee";
 import { CategoryStrip } from "@/components/landing/category-strip";
 import { NewArrivals } from "@/components/landing/new-arrivals";
+import { ParallaxMarquee } from "@/components/landing/parallax-marquee";
 import { Editorial } from "@/components/landing/editorial";
 import { Marquee } from "@/components/landing/marquee";
 import { ClosingCta } from "@/components/landing/closing-cta";
@@ -19,6 +20,7 @@ export default function Home() {
       <div id="nouveautes" className="scroll-mt-16 md:scroll-mt-20">
         <NewArrivals />
       </div>
+      <ParallaxMarquee />
       <Editorial />
       <Marquee />
       <ClosingCta />
