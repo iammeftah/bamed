@@ -3,18 +3,26 @@
  *   GET    /products?query&type&minPrice&maxPrice&sale&featured&sort&page&size
  *          -> Product[]  or  { items | content | data: Product[] }
  *   GET    /products/:id            -> Product (404 gives null)
- *   POST   /products                -> Product      (admin or manager)
- *   PUT    /products/:id            -> Product      (admin or manager)
- *   DELETE /products/:id            -> 204          (admin or manager)
- * Fields match the Product type in lib/products.ts. Adapt toProduct if yours differ.
- * Images: "images" can be [{ src, alt }] or ["url", ...]. A single "image" also works.
+ *   POST   /products                -> Product      (admin)
+ *   PUT    /products/:id            -> Product      (admin)
+ *   DELETE /products/:id            -> 204          (admin)
+ *
+ * Model: a product has ONE type and several colours. Each colour has its own photos:
+ *   { id, name, type, price, sizes,
+ *     colors: [{ name, hex, images: [{ src, alt } | "url", ...] }, ...] }
+ * Photos are shown per colour, so a product needs at least one colour to have images.
+ * Older backends that send "images" / "image" on the product still work: those photos
+ * are shared by every colour that has none of its own.
  */
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { mocksEnabled } from "@/lib/config";
 import {
   products as sampleProducts,
+  productTypes,
   type Product,
+  type ProductColor,
   type ProductImage,
+  type ProductType,
 } from "@/lib/products";
 
 export type ProductSort = "nouveautes" | "prix-asc" | "prix-desc";
@@ -33,13 +41,19 @@ export type ProductQuery = {
 
 export type ProductInput = Omit<Product, "id">;
 
-type ProductDto = Partial<Omit<Product, "images">> & {
+type ImageDto = string | ProductImage;
+
+type ColorDto = { name: string; hex: string; images?: ImageDto[] };
+
+type ProductDto = Partial<Omit<Product, "colors" | "type">> & {
   id: string | number;
   name: string;
   price: number | string;
   createdAt?: string;
-  images?: (string | ProductImage)[];
-  /** Older backends send one image */
+  type?: string;
+  colors?: ColorDto[];
+  /** Older backends send photos on the product itself */
+  images?: ImageDto[];
   image?: string;
   alt?: string;
 };
@@ -48,30 +62,41 @@ type ListDto =
   | ProductDto[]
   | { items?: ProductDto[]; content?: ProductDto[]; data?: ProductDto[] };
 
-function toImages(dto: ProductDto): ProductImage[] {
-  if (dto.images?.length) {
-    return dto.images.map((img) =>
-      typeof img === "string" ? { src: img, alt: dto.name } : img,
-    );
-  }
-  if (dto.image) return [{ src: dto.image, alt: dto.alt ?? dto.name }];
-  return [];
+function toImages(list: ImageDto[] | undefined, alt: string): ProductImage[] {
+  return (list ?? []).map((img) =>
+    typeof img === "string" ? { src: img, alt } : img,
+  );
+}
+
+function sharedImages(dto: ProductDto): ProductImage[] {
+  const list = toImages(dto.images, dto.name);
+  if (list.length) return list;
+  return dto.image ? [{ src: dto.image, alt: dto.alt ?? dto.name }] : [];
+}
+
+function toColors(dto: ProductDto): ProductColor[] {
+  const shared = sharedImages(dto);
+  return (dto.colors ?? []).map((c) => {
+    const own = toImages(c.images, `${dto.name}, ${c.name}`);
+    return { name: c.name, hex: c.hex, images: own.length ? own : shared };
+  });
 }
 
 function toProduct(dto: ProductDto): Product {
+  const known = productTypes.find((t) => t.id === dto.type);
+  const type: ProductType = known?.id ?? "chemises";
   return {
     id: String(dto.id),
     name: dto.name,
-    category: dto.category ?? "",
-    type: dto.type ?? "chemises",
+    category: dto.category ?? (known ? `${known.label} homme` : ""),
+    type,
     price: Number(dto.price),
     oldPrice: dto.oldPrice != null ? Number(dto.oldPrice) : undefined,
     tag: dto.tag,
     featured: Boolean(dto.featured),
     addedAt: dto.addedAt ?? (dto.createdAt ? Date.parse(dto.createdAt) : 0),
-    colors: dto.colors ?? [],
+    colors: toColors(dto),
     sizes: dto.sizes ?? [],
-    images: toImages(dto),
   };
 }
 

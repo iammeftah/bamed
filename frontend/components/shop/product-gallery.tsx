@@ -2,45 +2,46 @@
 
 import { useState } from "react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import type { ProductImage } from "@/lib/products";
+import { useProductColor } from "@/components/shop/product-color";
+import { SwitchingImage } from "@/components/shop/product-media";
 import { cn } from "@/lib/utils";
 
-export function ProductGallery({
-  images,
-  name,
-}: {
-  images: ProductImage[];
-  name: string;
-}) {
-  const [active, setActive] = useState(0);
-  const list = images.length ? images : [{ src: "", alt: name }];
-  const current = list[Math.min(active, list.length - 1)];
+/** Shows the photos of the selected colour. Must sit inside <ColorProvider>. */
+export function ProductGallery({ name }: { name: string }) {
+  const { color } = useProductColor();
+
+  // The picked thumbnail is remembered with its colour: when the colour
+  // changes, the gallery goes back to photo 1 without any effect.
+  const [pick, setPick] = useState({ color: "", index: 0 });
+
+  const images = color?.images.length ? color.images : [{ src: "", alt: name }];
+  const colorName = color?.name ?? "";
+  const index =
+    pick.color === colorName ? Math.min(pick.index, images.length - 1) : 0;
+  const current = images[index];
 
   return (
     <div className="space-y-3">
-      <ImagePlaceholder
-        key={current.src}
-        src={current.src}
-        alt={current.alt}
-        ratio="4 / 5"
-        label="Photo produit 4:5"
-        kind="product"
-        sizes="(min-width:1024px) 50vw, 100vw"
-        priority
-      />
+      <div className="relative aspect-[4/5] overflow-hidden rounded-xl bg-muted">
+        <SwitchingImage
+          image={current}
+          sizes="(min-width:1024px) 50vw, 100vw"
+          priority
+        />
+      </div>
 
-      {list.length > 1 && (
+      {images.length > 1 && (
         <ul className="grid grid-cols-5 gap-2 sm:grid-cols-6">
-          {list.map((img, i) => (
-            <li key={`${img.src}-${i}`}>
+          {images.map((img, i) => (
+            <li key={`${colorName}-${img.src}-${i}`}>
               <button
                 type="button"
-                onClick={() => setActive(i)}
+                onClick={() => setPick({ color: colorName, index: i })}
                 aria-label={`Voir la photo ${i + 1}`}
-                aria-pressed={i === active}
+                aria-pressed={i === index}
                 className={cn(
                   "block w-full overflow-hidden rounded-md ring-offset-2 ring-offset-background transition-opacity",
-                  i === active
+                  i === index
                     ? "opacity-100 ring-2 ring-foreground"
                     : "opacity-60 hover:opacity-100",
                 )}

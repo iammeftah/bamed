@@ -154,8 +154,7 @@ export default function CategoriesPage() {
                         >
                           <Pencil aria-hidden />
                         </Button>
-                        {d.canDelete && (
-                          <Button
+                        <Button
                             variant="ghost"
                             size="icon"
                             aria-label={`Supprimer ${c.name}`}
@@ -166,7 +165,6 @@ export default function CategoriesPage() {
                           >
                             <Trash2 aria-hidden />
                           </Button>
-                        )}
                       </div>
                     </td>
                   </tr>

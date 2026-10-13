@@ -3,27 +3,32 @@
 import { useState } from "react";
 import { motion } from "motion/react";
 import { Heart, ShoppingBag } from "lucide-react";
-import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import { coverImage, formatNumber, type Product } from "@/lib/products";
+import { ProductMedia } from "@/components/shop/product-media";
+import { colorImages, formatNumber, type Product } from "@/lib/products";
 
 export function ProductCard({ product }: { product: Product }) {
   const [liked, setLiked] = useState(false);
-  const cover = coverImage(product);
+  const [hovering, setHovering] = useState(false);
+  const images = colorImages(product);
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
   return (
-    <article className="product-card flex flex-col">
+    <article
+      className="product-card flex flex-col"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") setHovering(true);
+      }}
+      onPointerLeave={() => setHovering(false)}
+    >
       <div className="relative isolate overflow-hidden rounded-xl bg-muted">
         <a href="#" tabIndex={-1} aria-hidden="true" className="block">
           <div className="zoom-img">
-            <ImagePlaceholder
-              src={cover.src}
-              alt={cover.alt}
-              ratio="4 / 5"
-              label="Photo produit 4:5"
-              kind="product"
+            <ProductMedia
+              images={images}
+              name={product.name}
+              active={hovering}
               sizes="(min-width:1024px) 25vw, 50vw"
             />
           </div>

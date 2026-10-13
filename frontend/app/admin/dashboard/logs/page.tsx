@@ -66,16 +66,6 @@ export default function JournalPage() {
 
   if (!d.ready) return <PageSkeleton />;
 
-  if (d.role !== "admin")
-    return (
-      <div className="py-20 text-center">
-        <p className="text-lg font-semibold">Accès refusé</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Le journal est réservé aux administrateurs.
-        </p>
-      </div>
-    );
-
   return (
     <>
       <PageHeader

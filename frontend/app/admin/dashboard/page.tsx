@@ -204,14 +204,12 @@ export default function OverviewPage() {
           <CardHeader
             title="Activité récente"
             action={
-              d.role === "admin" ? (
-                <Link
-                  href="/admin/dashboard/logs"
-                  className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Tout voir
-                </Link>
-              ) : undefined
+              <Link
+                href="/admin/dashboard/logs"
+                className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Tout voir
+              </Link>
             }
           />
           <ul className="space-y-3">

@@ -73,7 +73,7 @@ export function AdminLoginForm({ next }: { next: string }) {
       </div>
 
       <div className="mx-auto my-auto w-full max-w-sm py-10">
-        <p className="mb-3 text-[13px] font-medium tracking-[0.4px] text-[#a5aeff]">
+        <p className="mb-3 text-[13px] font-medium tracking-[0.4px] text-gold">
           Administration
         </p>
         <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.6px]">

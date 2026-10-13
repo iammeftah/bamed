@@ -1,24 +1,37 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
-import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import { coverImage, formatNumber, type Product } from "@/lib/products";
+import { ProductMedia } from "@/components/shop/product-media";
+import { formatNumber, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export function ShopProductCard({ product }: { product: Product }) {
-  const cover = coverImage(product);
+  const [colorIndex, setColorIndex] = useState(0);
+  const [hovering, setHovering] = useState(false);
+
+  const color = product.colors[colorIndex] ?? product.colors[0];
+  const href = `/boutique/${encodeURIComponent(product.id)}${
+    color ? `?couleur=${encodeURIComponent(color.name)}` : ""
+  }`;
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
   return (
-    <article className="product-card relative flex flex-col">
+    <article
+      className="product-card relative flex flex-col"
+      onPointerEnter={(e) => {
+        if (e.pointerType === "mouse") setHovering(true);
+      }}
+      onPointerLeave={() => setHovering(false)}
+    >
       <div className="relative isolate overflow-hidden rounded-xl bg-muted">
         <div className="zoom-img">
-          <ImagePlaceholder
-            src={cover.src}
-            alt={cover.alt}
-            ratio="4 / 5"
-            label="Photo produit 4:5"
-            kind="product"
+          <ProductMedia
+            images={color?.images ?? []}
+            name={product.name}
+            active={hovering}
             sizes="(min-width:1024px) 25vw, 50vw"
           />
         </div>
@@ -44,7 +57,7 @@ export function ShopProductCard({ product }: { product: Product }) {
 
         <h3 className="text-base font-semibold leading-snug tracking-tight md:text-lg">
           <Link
-            href={`/boutique/${encodeURIComponent(product.id)}`}
+            href={href}
             className="underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
           >
             {product.name}
@@ -52,17 +65,33 @@ export function ShopProductCard({ product }: { product: Product }) {
         </h3>
 
         {product.colors.length > 0 && (
-          <ul aria-label="Couleurs disponibles" className="mt-1 flex items-center gap-1.5">
-            {product.colors.map((c) => (
-              <li key={c.name}>
-                <span
-                  title={c.name}
-                  className="block size-4 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.4)]"
-                  style={{ backgroundColor: c.hex }}
-                />
-                <span className="sr-only">{c.name}</span>
-              </li>
-            ))}
+          // z-10 puts the swatches above the link overlay so they stay clickable
+          <ul
+            aria-label="Couleurs disponibles"
+            className="relative z-10 mt-1 flex w-fit items-center gap-2"
+          >
+            {product.colors.map((c, i) => {
+              const on = i === colorIndex;
+              return (
+                <li key={c.name}>
+                  <button
+                    type="button"
+                    title={c.name}
+                    aria-label={c.name}
+                    aria-pressed={on}
+                    onClick={() => setColorIndex(i)}
+                    onPointerEnter={(e) => {
+                      if (e.pointerType === "mouse") setColorIndex(i);
+                    }}
+                    style={{ backgroundColor: c.hex }}
+                    className={cn(
+                      "relative block size-4 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.4)] ring-offset-2 ring-offset-background transition-shadow after:absolute after:-inset-1.5 after:content-['']",
+                      on && "ring-1 ring-foreground",
+                    )}
+                  />
+                </li>
+              );
+            })}
           </ul>
         )}
 

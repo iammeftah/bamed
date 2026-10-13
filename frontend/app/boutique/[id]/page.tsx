@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
+import { ColorPicker, ColorProvider } from "@/components/shop/product-color";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import { formatNumber, type Product } from "@/lib/products";
@@ -10,7 +11,10 @@ import { productsService } from "@/services/products.service";
 
 const ID = /^[\w-]{1,64}$/;
 
-type Props = { params: Promise<{ id: string }> };
+type Props = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ couleur?: string | string[] }>;
+};
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -23,12 +27,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function ProductPage({ params }: Props) {
+export default async function ProductPage({ params, searchParams }: Props) {
   const { id } = await params;
   if (!ID.test(id)) notFound();
 
   const product = await productsService.getProduct(id);
   if (!product) notFound();
+
+  // ?couleur=Marine opens the page in that colour (ignored if it does not exist)
+  const { couleur } = await searchParams;
+  const wanted = Array.isArray(couleur) ? couleur[0] : couleur;
 
   // Same category first, then the rest, 4 suggestions at most
   const all: Product[] = await productsService
@@ -77,117 +85,108 @@ export default async function ProductPage({ params }: Props) {
             </ol>
           </nav>
 
-          <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <ProductGallery images={product.images} name={product.name} />
+          <ColorProvider colors={product.colors} initial={wanted}>
+            <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
+              <ProductGallery name={product.name} />
 
-            <div className="lg:pt-4">
-              {product.tag && (
-                <span
-                  className={cn(
-                    "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider",
-                    product.tag === "Nouveau"
-                      ? "bg-gold text-gold-foreground"
-                      : "bg-neutral-950 text-white",
-                  )}
-                >
-                  {product.tag}
-                </span>
-              )}
-
-              <h1 className="mt-4 font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl">
-                {product.name}
-              </h1>
-              <p className="mt-3 text-base text-muted-foreground">
-                {product.category}
-              </p>
-
-              <p className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span
-                  className={cn(
-                    "font-display text-5xl font-bold leading-none tabular-nums md:text-6xl",
-                    product.oldPrice ? "text-sale" : "text-foreground",
-                  )}
-                >
-                  {formatNumber(product.price)}
-                  <span className="ml-1.5 font-sans text-sm font-bold tracking-wide md:text-base">
-                    MAD
+              <div className="lg:pt-4">
+                {product.tag && (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider",
+                      product.tag === "Nouveau"
+                        ? "bg-gold text-gold-foreground"
+                        : "bg-neutral-950 text-white",
+                    )}
+                  >
+                    {product.tag}
                   </span>
-                </span>
-                {product.oldPrice && (
-                  <>
-                    <span className="sr-only">, ancien prix</span>
-                    <span className="text-lg font-medium tabular-nums text-muted-foreground line-through">
-                      {formatNumber(product.oldPrice)}
+                )}
+
+                <h1 className="mt-4 font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl">
+                  {product.name}
+                </h1>
+                <p className="mt-3 text-base text-muted-foreground">
+                  {product.category}
+                </p>
+
+                <p className="mt-6 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span
+                    className={cn(
+                      "font-display text-5xl font-bold leading-none tabular-nums md:text-6xl",
+                      product.oldPrice ? "text-sale" : "text-foreground",
+                    )}
+                  >
+                    {formatNumber(product.price)}
+                    <span className="ml-1.5 font-sans text-sm font-bold tracking-wide md:text-base">
+                      MAD
                     </span>
-                    <span className="rounded-full bg-sale/10 px-2 py-0.5 text-sm font-bold text-sale">
-                      -{discount}%
-                    </span>
-                  </>
-                )}
-              </p>
+                  </span>
+                  {product.oldPrice && (
+                    <>
+                      <span className="sr-only">, ancien prix</span>
+                      <span className="text-lg font-medium tabular-nums text-muted-foreground line-through">
+                        {formatNumber(product.oldPrice)}
+                      </span>
+                      <span className="rounded-full bg-sale/10 px-2 py-0.5 text-sm font-bold text-sale">
+                        -{discount}%
+                      </span>
+                    </>
+                  )}
+                </p>
 
-              <dl className="mt-10 divide-y divide-border border-y border-border">
-                {product.colors.length > 0 && (
+                <dl className="mt-10 divide-y divide-border border-y border-border">
+                  {product.colors.length > 0 && (
+                    <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
+                      <dt className="text-sm font-semibold">Couleurs</dt>
+                      <dd>
+                        <ColorPicker />
+                      </dd>
+                    </div>
+                  )}
+
+                  {product.sizes.length > 0 && (
+                    <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
+                      <dt className="text-sm font-semibold">Tailles</dt>
+                      <dd>
+                        <ul className="flex flex-wrap gap-2">
+                          {product.sizes.map((s) => (
+                            <li
+                              key={s}
+                              className="inline-flex h-10 min-w-11 items-center justify-center rounded-md bg-muted px-3 text-sm font-semibold"
+                            >
+                              {s}
+                            </li>
+                          ))}
+                        </ul>
+                      </dd>
+                    </div>
+                  )}
+
                   <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
-                    <dt className="text-sm font-semibold">Couleurs</dt>
-                    <dd>
-                      <ul className="flex flex-wrap gap-x-5 gap-y-3">
-                        {product.colors.map((c) => (
-                          <li key={c.name} className="flex items-center gap-2 text-sm">
-                            <span
-                              aria-hidden
-                              className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.4)]"
-                              style={{ backgroundColor: c.hex }}
-                            />
-                            {c.name}
-                          </li>
-                        ))}
-                      </ul>
-                    </dd>
+                    <dt className="text-sm font-semibold">Catégorie</dt>
+                    <dd className="text-sm">{product.category}</dd>
                   </div>
-                )}
+                </dl>
 
-                {product.sizes.length > 0 && (
-                  <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
-                    <dt className="text-sm font-semibold">Tailles</dt>
-                    <dd>
-                      <ul className="flex flex-wrap gap-2">
-                        {product.sizes.map((s) => (
-                          <li
-                            key={s}
-                            className="inline-flex h-10 min-w-11 items-center justify-center rounded-md bg-muted px-3 text-sm font-semibold"
-                          >
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    </dd>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
-                  <dt className="text-sm font-semibold">Catégorie</dt>
-                  <dd className="text-sm">{product.category}</dd>
+                <div className="mt-8 flex flex-wrap gap-2">
+                  <Link
+                    href="/boutique"
+                    className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
+                  >
+                    <ArrowLeft className="size-4" aria-hidden />
+                    Retour à la boutique
+                  </Link>
+                  <Link
+                    href={`/boutique?categorie=${product.type}`}
+                    className="inline-flex h-11 items-center rounded-md bg-muted px-5 text-sm font-semibold transition-colors hover:bg-foreground/10"
+                  >
+                    Voir tous les articles de cette catégorie
+                  </Link>
                 </div>
-              </dl>
-
-              <div className="mt-8 flex flex-wrap gap-2">
-                <Link
-                  href="/boutique"
-                  className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
-                >
-                  <ArrowLeft className="size-4" aria-hidden />
-                  Retour à la boutique
-                </Link>
-                <Link
-                  href={`/boutique?categorie=${product.type}`}
-                  className="inline-flex h-11 items-center rounded-md bg-muted px-5 text-sm font-semibold transition-colors hover:bg-foreground/10"
-                >
-                  Voir tous les articles de cette catégorie
-                </Link>
               </div>
             </div>
-          </div>
+          </ColorProvider>
         </div>
       </section>
 

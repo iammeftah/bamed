@@ -14,9 +14,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { seedData } from "@/lib/dashboard/seed";
 import { slugify } from "@/lib/dashboard/format";
 import { formatMAD } from "@/lib/products";
-import type { Role } from "@/types/auth";
 import type {
-  AdminRole,
   AdminUser,
   DashboardData,
   LogEntry,
@@ -35,7 +33,6 @@ import type {
 
 const KEY = "bamed.dashboard.v1";
 const NOT_READY = "Données non chargées.";
-const ADMIN_ONLY = "Action réservée aux administrateurs.";
 
 type Result = string | null; // null = success, string = error message
 
@@ -47,7 +44,6 @@ export type AdminInput = {
   id?: string;
   name: string;
   email: string;
-  role: AdminRole;
   active: boolean;
 };
 export type SaleInput = {
@@ -76,10 +72,7 @@ type Ctx = DashboardData &
     ready: boolean;
     /** Time the data was loaded (kept in state so renders stay pure) */
     now: number;
-    role: Role | null;
     actorId: string | null;
-    canDelete: boolean;
-    canManageAdmins: boolean;
   };
 
 const DashboardCtx = createContext<Ctx | null>(null);
@@ -106,8 +99,8 @@ function nextSku(products: StockProduct[]) {
   return `BAM-${max + 1}`;
 }
 
-const activeAdmins = (list: AdminUser[]) =>
-  list.filter((a) => a.role === "admin" && a.active).length;
+   const activeAdmins = (list: AdminUser[]) =>
+     list.filter((a) => a.active).length;
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -116,7 +109,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const dataRef = useRef<DashboardData | null>(null);
   const actor = useRef({ id: "system", name: "Système" });
-  const roleRef = useRef<Role | null>(null);
 
   useEffect(() => {
     dataRef.current = data;
@@ -126,7 +118,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     actor.current = user
       ? { id: user.id, name: user.name }
       : { id: "system", name: "Système" };
-    roleRef.current = user?.role ?? null;
   }, [user]);
 
   // Load once: saved data, or demo data
@@ -182,7 +173,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const isAdmin = () => roleRef.current === "admin";
 
   const actions = useMemo<Actions>(() => {
     const saveCategory: Actions["saveCategory"] = (i) => {
@@ -237,7 +227,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const deleteCategory: Actions["deleteCategory"] = (id) => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
-      if (!isAdmin()) return ADMIN_ONLY;
       const cat = d.categories.find((c) => c.id === id);
       if (!cat) return "Catégorie introuvable.";
       const used = d.products.filter((p) => p.categoryId === id).length;
@@ -334,7 +323,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const deleteProduct: Actions["deleteProduct"] = (id) => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
-      if (!isAdmin()) return ADMIN_ONLY;
       const p = d.products.find((x) => x.id === id);
       if (!p) return "Produit introuvable.";
       mutate(
@@ -378,7 +366,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const saveAdmin: Actions["saveAdmin"] = (i) => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
-      if (!isAdmin()) return ADMIN_ONLY;
       const name = i.name.trim();
       const email = i.email.trim().toLowerCase();
       if (!name) return "Le nom est obligatoire.";
@@ -387,25 +374,21 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       if (d.admins.some((a) => a.email === email && a.id !== i.id))
         return "Cette adresse e-mail est déjà utilisée.";
 
-      const nextList = i.id
-        ? d.admins.map((a) =>
-            a.id === i.id
-              ? { ...a, name, email, role: i.role, active: i.active }
-              : a,
-          )
-        : d.admins;
       if (i.id) {
         if (!d.admins.some((a) => a.id === i.id))
           return "Administrateur introuvable.";
-        if (i.id === actor.current.id && (!i.active || i.role !== "admin"))
-          return "Vous ne pouvez pas retirer vos propres droits.";
+        if (i.id === actor.current.id && !i.active)
+          return "Vous ne pouvez pas désactiver votre propre compte.";
+        const nextList = d.admins.map((a) =>
+          a.id === i.id ? { ...a, name, email, active: i.active } : a,
+        );
         if (activeAdmins(nextList) < 1)
           return "Il doit rester au moins un administrateur actif.";
         mutate((dd) => ({ ...dd, admins: nextList }), {
           action: "update",
           entity: "admin",
           entityId: i.id,
-          summary: `Administrateur « ${name} » modifié (${i.role}, ${i.active ? "actif" : "désactivé"})`,
+          summary: `Administrateur « ${name} » modifié (${i.active ? "actif" : "désactivé"})`,
         });
       } else {
         const id = uid();
@@ -415,14 +398,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             ...dd,
             admins: [
               ...dd.admins,
-              { id, name, email, role: i.role, active: i.active, createdAt },
+              { id, name, email, active: i.active, createdAt },
             ],
           }),
           {
             action: "create",
             entity: "admin",
             entityId: id,
-            summary: `Administrateur « ${name} » créé (${i.role})`,
+            summary: `Administrateur « ${name} » créé`,
           },
         );
       }
@@ -432,7 +415,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const deleteAdmin: Actions["deleteAdmin"] = (id) => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
-      if (!isAdmin()) return ADMIN_ONLY;
       const a = d.admins.find((x) => x.id === id);
       if (!a) return "Administrateur introuvable.";
       if (id === actor.current.id)
@@ -512,21 +494,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
   }, [mutate]);
 
-  const role: Role | null = user?.role ?? null;
 
-  const value = useMemo<Ctx>(
-    () => ({
-      ...(data ?? empty),
-      ...actions,
-      ready: data !== null,
-      now,
-      role,
-      actorId: user?.id ?? null,
-      canDelete: role === "admin",
-      canManageAdmins: role === "admin",
-    }),
-    [data, actions, now, role, user?.id],
-  );
+     const value = useMemo<Ctx>(
+     () => ({
+       ...(data ?? empty),
+       ...actions,
+       ready: data !== null,
+       now,
+       actorId: user?.id ?? null,
+     }),
+     [data, actions, now, user?.id],
+   );
 
   return <DashboardCtx.Provider value={value}>{children}</DashboardCtx.Provider>;
 }

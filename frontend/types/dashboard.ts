@@ -23,13 +23,11 @@ export type StockProduct = {
   createdAt: number;
 };
 
-export type AdminRole = "admin" | "manager";
 
 export type AdminUser = {
   id: string;
   name: string;
   email: string;
-  role: AdminRole;
   active: boolean;
   createdAt: number;
 };

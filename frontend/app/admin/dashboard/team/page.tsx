@@ -22,12 +22,8 @@ import {
 import { fmtDate } from "@/lib/dashboard/format";
 import { useDashboard } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
-import type { AdminRole, AdminUser } from "@/types/dashboard";
+import type { AdminUser } from "@/types/dashboard";
 
-const roleLabel: Record<AdminRole, string> = {
-  admin: "Administrateur",
-  manager: "Gestionnaire",
-};
 
 function AdminForm({
   initial,
@@ -35,23 +31,17 @@ function AdminForm({
   onClose,
 }: {
   initial: AdminUser | null;
-  onSave: (v: {
-    name: string;
-    email: string;
-    role: AdminRole;
-    active: boolean;
-  }) => string | null;
+  onSave: (v: { name: string; email: string; active: boolean }) => string | null;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [email, setEmail] = useState(initial?.email ?? "");
-  const [role, setRole] = useState<AdminRole>(initial?.role ?? "manager");
   const [active, setActive] = useState(initial?.active ?? true);
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({ name, email, role, active });
+    const err = onSave({ name, email, active });
     if (err) setError(err);
     else onClose();
   }
@@ -76,21 +66,6 @@ function AdminForm({
           onChange={(e) => setEmail(e.target.value)}
           className={inputCls}
         />
-      </Field>
-      <Field
-        label="Rôle"
-        htmlFor="a-role"
-        hint="Un gestionnaire peut gérer produits, catégories et ventes, mais pas supprimer ni gérer l'équipe."
-      >
-        <select
-          id="a-role"
-          value={role}
-          onChange={(e) => setRole(e.target.value as AdminRole)}
-          className={inputCls}
-        >
-          <option value="manager">Gestionnaire</option>
-          <option value="admin">Administrateur</option>
-        </select>
       </Field>
       <label className="flex cursor-pointer items-center gap-2.5 text-sm">
         <input
@@ -136,15 +111,7 @@ export default function AdminsPage() {
 
   if (!d.ready) return <PageSkeleton />;
 
-  if (!d.canManageAdmins)
-    return (
-      <div className="py-20 text-center">
-        <p className="text-lg font-semibold">Accès refusé</p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Seuls les administrateurs peuvent gérer l&apos;équipe.
-        </p>
-      </div>
-    );
+  
 
   return (
     <>
@@ -170,7 +137,6 @@ export default function AdminsPage() {
           <thead>
             <tr>
               <th className={thCls}>Nom</th>
-              <th className={thCls}>Rôle</th>
               <th className={thCls}>Statut</th>
               <th className={thCls}>Ventes</th>
               <th className={thCls}>Depuis</th>
@@ -193,11 +159,6 @@ export default function AdminsPage() {
                       )}
                     </p>
                     <p className="text-xs text-muted-foreground">{a.email}</p>
-                  </td>
-                  <td className={tdCls}>
-                    <Badge tone={a.role === "admin" ? "primary" : "neutral"}>
-                      {roleLabel[a.role]}
-                    </Badge>
                   </td>
                   <td className={tdCls}>
                     <Badge tone={a.active ? "success" : "neutral"}>

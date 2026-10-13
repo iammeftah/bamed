@@ -56,12 +56,11 @@ export function seedData(now: number): DashboardData {
     createdAt: now - (100 - i * 6) * DAY,
   }));
 
-  const admins: AdminUser[] = [
+    const admins: AdminUser[] = [
     {
       id: "dev-admin",
       name: "Admin BAMED",
       email: "admin@bamed.ma",
-      role: "admin",
       active: true,
       createdAt: now - 160 * DAY,
     },
@@ -69,7 +68,6 @@ export function seedData(now: number): DashboardData {
       id: "adm-2",
       name: "Yassine El Amrani",
       email: "yassine@bamed.ma",
-      role: "manager",
       active: true,
       createdAt: now - 120 * DAY,
     },
@@ -77,7 +75,6 @@ export function seedData(now: number): DashboardData {
       id: "adm-3",
       name: "Salma Bennani",
       email: "salma@bamed.ma",
-      role: "manager",
       active: true,
       createdAt: now - 90 * DAY,
     },
@@ -85,7 +82,6 @@ export function seedData(now: number): DashboardData {
       id: "adm-4",
       name: "Omar Tazi",
       email: "omar@bamed.ma",
-      role: "manager",
       active: false,
       createdAt: now - 70 * DAY,
     },
