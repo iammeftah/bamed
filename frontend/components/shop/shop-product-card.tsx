@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import { formatNumber, type Product } from "@/lib/products";
+import { coverImage, formatNumber, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
 export function ShopProductCard({ product }: { product: Product }) {
+  const cover = coverImage(product);
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
@@ -13,8 +14,8 @@ export function ShopProductCard({ product }: { product: Product }) {
       <div className="relative isolate overflow-hidden rounded-xl bg-muted">
         <div className="zoom-img">
           <ImagePlaceholder
-            src={product.image}
-            alt={product.alt}
+            src={cover.src}
+            alt={cover.alt}
             ratio="4 / 5"
             label="Photo produit 4:5"
             kind="product"

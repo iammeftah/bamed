@@ -4,10 +4,11 @@ import { useState } from "react";
 import { motion } from "motion/react";
 import { Heart, ShoppingBag } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import { formatNumber, type Product } from "@/lib/products";
+import { coverImage, formatNumber, type Product } from "@/lib/products";
 
 export function ProductCard({ product }: { product: Product }) {
   const [liked, setLiked] = useState(false);
+  const cover = coverImage(product);
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
@@ -18,8 +19,8 @@ export function ProductCard({ product }: { product: Product }) {
         <a href="#" tabIndex={-1} aria-hidden="true" className="block">
           <div className="zoom-img">
             <ImagePlaceholder
-              src={product.image}
-              alt={product.alt}
+              src={cover.src}
+              alt={cover.alt}
               ratio="4 / 5"
               label="Photo produit 4:5"
               kind="product"

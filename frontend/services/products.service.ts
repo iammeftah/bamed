@@ -7,10 +7,15 @@
  *   PUT    /products/:id            -> Product      (admin or manager)
  *   DELETE /products/:id            -> 204          (admin or manager)
  * Fields match the Product type in lib/products.ts. Adapt toProduct if yours differ.
+ * Images: "images" can be [{ src, alt }] or ["url", ...]. A single "image" also works.
  */
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { mocksEnabled } from "@/lib/config";
-import { products as sampleProducts, type Product } from "@/lib/products";
+import {
+  products as sampleProducts,
+  type Product,
+  type ProductImage,
+} from "@/lib/products";
 
 export type ProductSort = "nouveautes" | "prix-asc" | "prix-desc";
 
@@ -28,16 +33,30 @@ export type ProductQuery = {
 
 export type ProductInput = Omit<Product, "id">;
 
-type ProductDto = Partial<Product> & {
+type ProductDto = Partial<Omit<Product, "images">> & {
   id: string | number;
   name: string;
   price: number | string;
   createdAt?: string;
+  images?: (string | ProductImage)[];
+  /** Older backends send one image */
+  image?: string;
+  alt?: string;
 };
 
 type ListDto =
   | ProductDto[]
   | { items?: ProductDto[]; content?: ProductDto[]; data?: ProductDto[] };
+
+function toImages(dto: ProductDto): ProductImage[] {
+  if (dto.images?.length) {
+    return dto.images.map((img) =>
+      typeof img === "string" ? { src: img, alt: dto.name } : img,
+    );
+  }
+  if (dto.image) return [{ src: dto.image, alt: dto.alt ?? dto.name }];
+  return [];
+}
 
 function toProduct(dto: ProductDto): Product {
   return {
@@ -52,8 +71,7 @@ function toProduct(dto: ProductDto): Product {
     addedAt: dto.addedAt ?? (dto.createdAt ? Date.parse(dto.createdAt) : 0),
     colors: dto.colors ?? [],
     sizes: dto.sizes ?? [],
-    image: dto.image ?? "",
-    alt: dto.alt ?? dto.name,
+    images: toImages(dto),
   };
 }
 

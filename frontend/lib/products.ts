@@ -8,6 +8,8 @@ export type ProductType =
 
 export type ProductColor = { name: string; hex: string };
 
+export type ProductImage = { src: string; alt: string };
+
 export type Product = {
   id: string;
   name: string;
@@ -23,8 +25,8 @@ export type Product = {
   addedAt: number;
   colors: ProductColor[];
   sizes: string[];
-  image: string;
-  alt: string;
+  /** First image is the cover. Can be empty (a placeholder is shown). */
+  images: ProductImage[];
 };
 
 export type Category = {
@@ -59,6 +61,11 @@ export const images = {
     alt: "Éditorial BAMED : un homme en pièces ajustées du quotidien",
   },
 };
+
+/** The cover image of a product, or an empty one so the placeholder shows. */
+export function coverImage(p: Pick<Product, "images" | "name">): ProductImage {
+  return p.images[0] ?? { src: "", alt: p.name };
+}
 
 /**
  * Brands marquee. Logo files go in public/images/brands/ with the names below.
@@ -128,8 +135,12 @@ export const products: Product[] = [
     addedAt: 8,
     colors: [ciel, blanc],
     sizes: tops,
-    image: "/images/products/oxford-shirt.jpg",
-    alt: "Chemise Oxford à col boutonné, coupe classique",
+    images: [
+      {
+        src: "/images/products/oxford-shirt.jpg",
+        alt: "Chemise Oxford à col boutonné, coupe classique",
+      },
+    ],
   },
   {
     id: "linen-camp-shirt",
@@ -141,8 +152,12 @@ export const products: Product[] = [
     addedAt: 7,
     colors: [sable, sauge],
     sizes: tops,
-    image: "/images/products/linen-camp-shirt.jpg",
-    alt: "Chemise en lin à manches courtes et col cubain",
+    images: [
+      {
+        src: "/images/products/linen-camp-shirt.jpg",
+        alt: "Chemise en lin à manches courtes et col cubain",
+      },
+    ],
   },
   {
     id: "heavyweight-tee",
@@ -153,8 +168,12 @@ export const products: Product[] = [
     addedAt: 2,
     colors: [noir, blanc, gris],
     sizes: tops,
-    image: "/images/products/heavyweight-tee.jpg",
-    alt: "T-shirt col rond en coton épais",
+    images: [
+      {
+        src: "/images/products/heavyweight-tee.jpg",
+        alt: "T-shirt col rond en coton épais",
+      },
+    ],
   },
   {
     id: "pique-polo",
@@ -166,8 +185,12 @@ export const products: Product[] = [
     addedAt: 6,
     colors: [marine, blanc],
     sizes: tops,
-    image: "/images/products/pique-polo.jpg",
-    alt: "Polo en coton piqué",
+    images: [
+      {
+        src: "/images/products/pique-polo.jpg",
+        alt: "Polo en coton piqué",
+      },
+    ],
   },
   {
     id: "tailored-chinos",
@@ -180,8 +203,12 @@ export const products: Product[] = [
     addedAt: 3,
     colors: [beige, marine],
     sizes: bottoms,
-    image: "/images/products/tailored-chinos.jpg",
-    alt: "Pantalon chino ajusté à coupe slim",
+    images: [
+      {
+        src: "/images/products/tailored-chinos.jpg",
+        alt: "Pantalon chino ajusté à coupe slim",
+      },
+    ],
   },
   {
     id: "wool-overshirt",
@@ -193,8 +220,12 @@ export const products: Product[] = [
     addedAt: 4,
     colors: [anthracite, olive],
     sizes: tops,
-    image: "/images/products/wool-overshirt.jpg",
-    alt: "Surchemise en laine mélangée",
+    images: [
+      {
+        src: "/images/products/wool-overshirt.jpg",
+        alt: "Surchemise en laine mélangée",
+      },
+    ],
   },
   {
     id: "merino-crew-knit",
@@ -208,8 +239,12 @@ export const products: Product[] = [
     addedAt: 1,
     colors: [marine, gris],
     sizes: tops,
-    image: "/images/products/merino-crew-knit.jpg",
-    alt: "Pull fin en laine mérinos à col rond",
+    images: [
+      {
+        src: "/images/products/merino-crew-knit.jpg",
+        alt: "Pull fin en laine mérinos à col rond",
+      },
+    ],
   },
   {
     id: "relaxed-trousers",
@@ -221,10 +256,16 @@ export const products: Product[] = [
     addedAt: 5,
     colors: [noir, beige],
     sizes: bottoms,
-    image: "/images/products/relaxed-trousers.jpg",
-    alt: "Pantalon à pinces, coupe large et fluide",
+    images: [
+      {
+        src: "/images/products/relaxed-trousers.jpg",
+        alt: "Pantalon à pinces, coupe large et fluide",
+      },
+    ],
   },
 ];
+
+// Add an animation on images switching, carousel switches on hover
 
 /** 1290 -> "1 290" (manual formatting, so server and client always match) */
 export function formatNumber(amount: number): string {

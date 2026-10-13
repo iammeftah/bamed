@@ -284,8 +284,9 @@ input[type="color"]::-moz-color-swatch {
   --card-foreground: #f7f8f8;
   --popover: #141516;
   --popover-foreground: #f7f8f8;
-  --primary: #5e6ad2;
-  --primary-foreground: #ffffff;
+  /* Same gold token as the storefront */
+  --primary: var(--gold);
+  --primary-foreground: var(--gold-foreground);
   --secondary: #141516;
   --secondary-foreground: #f7f8f8;
   --muted: #141516;
@@ -295,6 +296,6 @@ input[type="color"]::-moz-color-swatch {
   --destructive: #e5484d;
   --border: #23252a;
   --input: #34343a;
-  --ring: #5e69d1;
+  --ring: var(--gold);
   --success: #27a644;
 }

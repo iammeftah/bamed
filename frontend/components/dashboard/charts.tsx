@@ -317,8 +317,8 @@ export function CandleChart({
 /* Donut chart (share by category)                                   */
 /* ---------------------------------------------------------------- */
 
-// One hue (lavender) in several steps, so no second accent colour is introduced
-const PALETTE = ["#5e6ad2", "#828fff", "#4a54a8", "#a5aeff", "#363d7a", "#c9ceff"];
+// One hue (gold) in several steps, matching the BAMED accent
+const PALETTE = ["#c9a24b", "#e0c070", "#a8832f", "#ecd596", "#7d6222", "#f3e6c2"];
 
 export function DonutChart({
   data,

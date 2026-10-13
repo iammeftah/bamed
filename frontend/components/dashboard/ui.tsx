@@ -163,7 +163,7 @@ export function EmptyState({
 
 const tones = {
   neutral: "bg-accent text-muted-foreground",
-  primary: "bg-primary/15 text-[#a5aeff]",
+  primary: "bg-primary/15 text-gold",
   success: "bg-success/15 text-success",
   warning: "bg-amber-400/15 text-amber-300",
   danger: "bg-destructive/15 text-destructive",

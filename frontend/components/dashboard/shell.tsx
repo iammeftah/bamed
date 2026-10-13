@@ -82,7 +82,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         >
           BAMED
         </Link>
-        <span className="ml-3 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#a5aeff]">
+        <span className="ml-3 rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gold">
           Admin
         </span>
       </div>

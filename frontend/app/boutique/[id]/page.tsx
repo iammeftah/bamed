@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
-import { ImagePlaceholder } from "@/components/landing/image-placeholder";
+import { ProductGallery } from "@/components/shop/product-gallery";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import { formatNumber, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
@@ -78,15 +78,7 @@ export default async function ProductPage({ params }: Props) {
           </nav>
 
           <div className="grid gap-10 lg:grid-cols-2 lg:gap-16">
-            <ImagePlaceholder
-              src={product.image}
-              alt={product.alt}
-              ratio="4 / 5"
-              label="Photo produit 4:5"
-              kind="product"
-              sizes="(min-width:1024px) 50vw, 100vw"
-              priority
-            />
+            <ProductGallery images={product.images} name={product.name} />
 
             <div className="lg:pt-4">
               {product.tag && (
