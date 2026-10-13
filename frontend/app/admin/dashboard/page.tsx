@@ -148,7 +148,7 @@ export default function OverviewPage() {
             description="Sur la période sélectionnée"
             action={
               <Link
-                href="/dashboard/sales"
+                href="/admin/dashboard/sales"
                 className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
                 Détail
@@ -170,7 +170,7 @@ export default function OverviewPage() {
             title="Alertes de stock"
             action={
               <Link
-                href="/dashboard/products"
+                href="/admin/dashboard/products"
                 className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
               >
                 Gérer
@@ -206,7 +206,7 @@ export default function OverviewPage() {
             action={
               d.role === "admin" ? (
                 <Link
-                  href="/dashboard/logs"
+                  href="/admin/dashboard/logs"
                   className="text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
                   Tout voir

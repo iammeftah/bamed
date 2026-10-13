@@ -76,7 +76,7 @@ type Ctx = DashboardData &
     ready: boolean;
     /** Time the data was loaded (kept in state so renders stay pure) */
     now: number;
-    role: Role;
+    role: Role | null;
     actorId: string | null;
     canDelete: boolean;
     canManageAdmins: boolean;
@@ -116,7 +116,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const dataRef = useRef<DashboardData | null>(null);
   const actor = useRef({ id: "system", name: "Système" });
-  const roleRef = useRef<Role>("customer");
+  const roleRef = useRef<Role | null>(null);
 
   useEffect(() => {
     dataRef.current = data;
@@ -126,7 +126,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     actor.current = user
       ? { id: user.id, name: user.name }
       : { id: "system", name: "Système" };
-    roleRef.current = user?.role ?? "customer";
+    roleRef.current = user?.role ?? null;
   }, [user]);
 
   // Load once: saved data, or demo data
@@ -512,7 +512,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
   }, [mutate]);
 
-  const role: Role = user?.role ?? "customer";
+  const role: Role | null = user?.role ?? null;
 
   const value = useMemo<Ctx>(
     () => ({

@@ -1,20 +1,24 @@
-// frontend/components/auth/admin-login-form.tsx
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, CircleAlert, Eye, EyeOff, Loader2 } from "lucide-react";
-import { ThemeToggle } from "@/components/landing/theme-toggle";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CircleAlert,
+  Eye,
+  EyeOff,
+  Loader2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api/client";
 import { mocksEnabled } from "@/lib/config";
 
 const inputClass =
-  "h-11 w-full rounded-md bg-muted px-3.5 text-base outline-none transition-colors placeholder:text-muted-foreground/60 focus:bg-foreground/[0.06] aria-[invalid=true]:ring-1 aria-[invalid=true]:ring-destructive";
+  "h-10 w-full rounded-md border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring aria-[invalid=true]:border-destructive";
 
-const labelClass =
-  "block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground";
+const labelClass = "block text-xs font-medium";
 
 export function AdminLoginForm({ next }: { next: string }) {
   const router = useRouter();
@@ -34,19 +38,19 @@ export function AdminLoginForm({ next }: { next: string }) {
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return;
     setError(null);
     setPending(true);
     try {
       await login({ phone, password });
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(
-          err.status === 401
-            ? "Numéro ou mot de passe incorrect."
-            : err.message,
-        );
+      if (err instanceof ApiError && err.status === 401) {
+        setError("Numéro ou mot de passe incorrect.");
+      } else if (err instanceof ApiError && err.status === 400) {
+        setError(err.message);
       } else {
-        setError("Une erreur est survenue. Réessayez.");
+        // Never show raw server messages to the visitor
+        setError("Connexion impossible. Réessayez dans un instant.");
       }
     } finally {
       setPending(false);
@@ -54,31 +58,33 @@ export function AdminLoginForm({ next }: { next: string }) {
   }
 
   return (
-    <main className="flex min-h-svh flex-col bg-background px-5 py-6 sm:px-10">
+    <main className="flex min-h-svh flex-col px-5 py-6 sm:px-10">
       <div className="flex items-center justify-between">
+        <span className="font-display text-xl font-bold tracking-[0.3em]">
+          BAMED
+        </span>
         <Link
           href="/"
-          aria-label="BAMED, accueil"
-          className="font-display text-2xl font-bold tracking-[0.3em]"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
-          BAMED
+          <ArrowLeft className="size-4" aria-hidden />
+          Retour au site
         </Link>
-        <ThemeToggle />
       </div>
 
       <div className="mx-auto my-auto w-full max-w-sm py-10">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-gold">
+        <p className="mb-3 text-[13px] font-medium tracking-[0.4px] text-[#a5aeff]">
           Administration
         </p>
-        <h1 className="font-display text-5xl font-bold uppercase leading-[0.9] md:text-6xl">
+        <h1 className="text-[28px] font-semibold leading-tight tracking-[-0.6px]">
           Connexion
         </h1>
-        <p className="mt-3 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm text-muted-foreground">
           Accès réservé à l&apos;équipe BAMED.
         </p>
 
-        <form onSubmit={onSubmit} className="mt-8 space-y-5">
-          <div className="space-y-2">
+        <form onSubmit={onSubmit} className="mt-8 space-y-5" noValidate>
+          <div className="space-y-1.5">
             <label htmlFor="phone" className={labelClass}>
               Téléphone
             </label>
@@ -88,6 +94,7 @@ export function AdminLoginForm({ next }: { next: string }) {
               inputMode="tel"
               autoComplete="username"
               required
+              maxLength={20}
               placeholder="06 12 34 56 78"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
@@ -96,7 +103,7 @@ export function AdminLoginForm({ next }: { next: string }) {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <label htmlFor="password" className={labelClass}>
               Mot de passe
             </label>
@@ -106,6 +113,7 @@ export function AdminLoginForm({ next }: { next: string }) {
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
+                maxLength={128}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 aria-invalid={Boolean(error)}
@@ -120,12 +128,12 @@ export function AdminLoginForm({ next }: { next: string }) {
                     : "Afficher le mot de passe"
                 }
                 aria-pressed={showPassword}
-                className="absolute right-1 top-1 flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+                className="absolute right-1 top-1 flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
               >
                 {showPassword ? (
-                  <EyeOff className="size-[18px]" aria-hidden />
+                  <EyeOff className="size-4" aria-hidden />
                 ) : (
-                  <Eye className="size-[18px]" aria-hidden />
+                  <Eye className="size-4" aria-hidden />
                 )}
               </button>
             </div>
@@ -144,7 +152,7 @@ export function AdminLoginForm({ next }: { next: string }) {
           <button
             type="submit"
             disabled={pending}
-            className="flex h-11 w-full items-center justify-between rounded-md bg-foreground px-4 text-sm font-semibold text-background transition-colors hover:bg-foreground/90 active:scale-[0.99] disabled:opacity-60"
+            className="flex h-10 w-full items-center justify-between rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-[#828fff] active:bg-[#5e69d1] disabled:opacity-60"
           >
             Se connecter
             {pending ? (
@@ -156,11 +164,10 @@ export function AdminLoginForm({ next }: { next: string }) {
         </form>
 
         {showDemo && (
-          <p className="mt-6 rounded-md bg-muted px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+          <p className="mt-6 rounded-md border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
             Mode démo :{" "}
-            <span className="font-semibold text-foreground">0600000000</span>{" "}
-            /{" "}
-            <span className="font-semibold text-foreground">admin123</span>
+            <span className="font-medium text-foreground">0600000000</span> /{" "}
+            <span className="font-medium text-foreground">admin123</span>
           </p>
         )}
       </div>

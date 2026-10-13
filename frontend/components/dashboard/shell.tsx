@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -16,7 +16,9 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import { ADMIN_HOME } from "@/lib/auth/redirect";
 import { cn } from "@/lib/utils";
+import type { Role } from "@/types/auth";
 
 const groups = [
   {
@@ -24,18 +26,18 @@ const groups = [
     items: [
       {
         label: "Vue d'ensemble",
-        href: "/dashboard",
+        href: ADMIN_HOME,
         icon: LayoutDashboard,
         exact: true,
       },
-      { label: "Ventes", href: "/dashboard/sales", icon: ShoppingCart },
+      { label: "Ventes", href: `${ADMIN_HOME}/sales`, icon: ShoppingCart },
     ],
   },
   {
     title: "Catalogue",
     items: [
-      { label: "Produits", href: "/dashboard/products", icon: Package },
-      { label: "Catégories", href: "/dashboard/categories", icon: Tags },
+      { label: "Produits", href: `${ADMIN_HOME}/products`, icon: Package },
+      { label: "Catégories", href: `${ADMIN_HOME}/categories`, icon: Tags },
     ],
   },
   {
@@ -43,13 +45,13 @@ const groups = [
     items: [
       {
         label: "Administrateurs",
-        href: "/dashboard/admin",
+        href: `${ADMIN_HOME}/team`,
         icon: ShieldCheck,
         adminOnly: true,
       },
       {
         label: "Journal d'activité",
-        href: "/dashboard/logs",
+        href: `${ADMIN_HOME}/logs`,
         icon: ScrollText,
         adminOnly: true,
       },
@@ -57,27 +59,24 @@ const groups = [
   },
 ];
 
-const roleLabel = {
+const roleLabel: Record<Role, string> = {
   admin: "Administrateur",
-  manager: "Gestionnaire",
-  customer: "Client",
-} as const;
+};
 
 function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, logout } = useAuth();
 
+  // RequireAuth sends the visitor to /admin/auth once the session is gone
   async function onLogout() {
     await logout();
-    router.replace("/connexion");
   }
 
   return (
     <div className="flex h-full flex-col">
       <div className="flex h-14 items-center px-5">
         <Link
-          href="/dashboard"
+          href={ADMIN_HOME}
           onClick={onNavigate}
           className="font-display text-xl font-bold tracking-[0.3em]"
         >
@@ -88,7 +87,10 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         </span>
       </div>
 
-      <nav aria-label="Navigation du tableau de bord" className="flex-1 overflow-y-auto px-3 py-4">
+      <nav
+        aria-label="Navigation du tableau de bord"
+        className="flex-1 overflow-y-auto px-3 py-4"
+      >
         {groups.map((g) => {
           const items = g.items.filter(
             (i) => !("adminOnly" in i && i.adminOnly) || user?.role === "admin",
@@ -104,7 +106,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
                   const exact = "exact" in rest && rest.exact;
                   const active = exact
                     ? pathname === href
-                    : pathname.startsWith(href);
+                    : pathname === href || pathname.startsWith(`${href}/`);
                   return (
                     <li key={href}>
                       <Link
@@ -168,6 +170,15 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function DashboardShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+
   return (
     <div className="min-h-svh">
       {/* Desktop sidebar */}
@@ -184,6 +195,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Ouvrir le menu"
+          aria-expanded={open}
           className="flex size-10 items-center justify-center rounded-md hover:bg-accent"
         >
           <Menu className="size-5" aria-hidden />

@@ -94,7 +94,7 @@ export function SiteFooter() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
             <p>© {new Date().getFullYear()} BAMED. Tous droits réservés.</p>
             <Link
-              href={status === "authenticated" ? "/admin" : "/admin/connexion"}
+              href={status === "authenticated" ? "/admin/dashboard" : "/admin/auth"}
               className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
             >
               {status === "authenticated" ? "Tableau de bord" : "Espace équipe"}
