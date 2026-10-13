@@ -1,3 +1,4 @@
+// frontend/components/auth/auth-provider.tsx
 "use client";
 
 import {
@@ -10,7 +11,7 @@ import {
 } from "react";
 import { authService } from "@/services/auth.service";
 import { getTokens } from "@/lib/auth/storage";
-import type { LoginInput, RegisterInput, User } from "@/types/auth";
+import type { LoginInput, User } from "@/types/auth";
 
 type Status = "loading" | "authenticated" | "anonymous";
 
@@ -18,7 +19,6 @@ export type AuthContextValue = {
   user: User | null;
   status: Status;
   login: (input: LoginInput) => Promise<User>;
-  register: (input: RegisterInput) => Promise<User>;
   logout: () => Promise<void>;
 };
 
@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     async function restore() {
+      // Customers have no token: nothing to check, no network call
       if (!getTokens().accessToken) return expire();
       try {
         const me = await authService.me();
@@ -64,13 +65,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const u = await authService.register(input);
-    setUser(u);
-    setStatus("authenticated");
-    return u;
-  }, []);
-
   const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
@@ -78,8 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout],
+    () => ({ user, status, login, logout }),
+    [user, status, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

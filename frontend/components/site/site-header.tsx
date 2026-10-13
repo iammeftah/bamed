@@ -1,3 +1,4 @@
+// frontend/components/site/site-header.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,15 +13,12 @@ import {
 import {
   ArrowUpRight,
   Heart,
-  LogOut,
   Menu,
   Search,
   ShoppingBag,
-  User as UserIcon,
   X,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/landing/theme-toggle";
-import { useAuth } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -33,23 +31,15 @@ const links = [
   { label: "À propos", href: "/a-propos" },
 ];
 
-const roleLabel = {
-  admin: "Administrateur",
-  manager: "Gestionnaire",
-  customer: "Client",
-} as const;
-
 const iconBtn =
   "flex size-10 items-center justify-center rounded-md transition-opacity hover:opacity-60 sm:size-9";
 const icon = "size-[18px]";
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const { user, status, logout } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
-  const [account, setAccount] = useState(false);
   const { scrollY } = useScroll();
 
   useMotionValueEvent(scrollY, "change", (y) => {
@@ -58,49 +48,36 @@ export function SiteHeader() {
     setHidden(y > previous && y > 200);
   });
 
-  const overlay = open || account;
-
   useEffect(() => {
-    if (!overlay) return;
+    if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setOpen(false);
-        setAccount(false);
-      }
+      if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [overlay]);
+  }, [open]);
 
-  // The auth pages are full-screen and carry their own logo and back link
-  if (pathname === "/connexion" || pathname === "/inscription") return null;
+  // The back office has its own layout: no public header there
+  if (pathname.startsWith("/admin")) return null;
 
   // Dark glass with light text only over the home hero
   const clear = pathname === "/" && !scrolled && !open;
 
-  const closeAll = () => {
-    setOpen(false);
-    setAccount(false);
-  };
-
-  async function onLogout() {
-    closeAll();
-    await logout();
-  }
+  const close = () => setOpen(false);
 
   return (
     <>
-      {overlay && (
+      {open && (
         <button
           type="button"
           aria-label="Fermer"
-          onClick={closeAll}
+          onClick={close}
           className="fixed inset-0 z-40 cursor-default"
         />
       )}
 
       <motion.header
-        animate={{ y: hidden && !overlay ? "-150%" : "0%" }}
+        animate={{ y: hidden && !open ? "-150%" : "0%" }}
         transition={{ duration: 0.4, ease }}
         className="fixed inset-x-0 top-3 z-50 px-3 md:top-4 md:px-6"
       >
@@ -115,7 +92,7 @@ export function SiteHeader() {
           >
             <Link
               href="/"
-              onClick={closeAll}
+              onClick={close}
               aria-label="BAMED, accueil"
               className="font-display text-xl font-bold tracking-[0.3em]"
             >
@@ -166,65 +143,6 @@ export function SiteHeader() {
                 <Heart className={icon} aria-hidden />
               </button>
               <ThemeToggle />
-
-              {/* Account (tablet and desktop) */}
-              <div className="relative hidden sm:block">
-                {status === "loading" && <span className="block size-9" />}
-                {status === "anonymous" && (
-                  <Link
-                    href="/connexion"
-                    aria-label="Se connecter"
-                    className={iconBtn}
-                  >
-                    <UserIcon className={icon} aria-hidden />
-                  </Link>
-                )}
-                {status === "authenticated" && user && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => setAccount((v) => !v)}
-                      aria-label="Mon compte"
-                      aria-expanded={account}
-                      className="flex size-9 items-center justify-center rounded-md bg-current/10 text-xs font-bold uppercase transition-opacity hover:opacity-70"
-                    >
-                      {user.name.charAt(0)}
-                    </button>
-                    <AnimatePresence>
-                      {account && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.2, ease }}
-                          className="absolute right-0 top-full mt-2 w-60 rounded-lg bg-background p-2 text-foreground shadow-[0_20px_50px_rgb(0_0_0/0.18)]"
-                        >
-                          <div className="px-3 py-2">
-                            <p className="truncate text-sm font-semibold">
-                              {user.name}
-                            </p>
-                            <p className="truncate text-xs text-muted-foreground">
-                              {user.email}
-                            </p>
-                            <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-gold">
-                              {roleLabel[user.role]}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onLogout}
-                            className="flex h-9 w-full items-center gap-2 rounded-md px-3 text-sm font-semibold transition-opacity hover:opacity-60"
-                          >
-                            <LogOut className="size-4" aria-hidden />
-                            Se déconnecter
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </>
-                )}
-              </div>
-
               <button type="button" aria-label="Mon panier" className={iconBtn}>
                 <ShoppingBag className={icon} aria-hidden />
               </button>
@@ -260,57 +178,19 @@ export function SiteHeader() {
                   <Link
                     key={l.label}
                     href={l.href}
-                    onClick={closeAll}
+                    onClick={close}
                     aria-current={pathname === l.href ? "page" : undefined}
                     className={cn(
                       "flex items-center justify-between rounded-md px-3 py-2.5 font-display text-3xl font-bold uppercase leading-none transition-opacity",
-                      pathname === l.href ? "opacity-100" : "opacity-60 hover:opacity-100",
+                      pathname === l.href
+                        ? "opacity-100"
+                        : "opacity-60 hover:opacity-100",
                     )}
                   >
                     {l.label}
                     <ArrowUpRight className="size-5" aria-hidden />
                   </Link>
                 ))}
-
-                <div className="mt-2 flex gap-2 p-1">
-                  {status === "authenticated" && user ? (
-                    <>
-                      <div className="min-w-0 flex-1 px-2">
-                        <p className="truncate text-sm font-semibold">
-                          {user.name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {roleLabel[user.role]}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={onLogout}
-                        className="flex h-10 items-center gap-2 rounded-md bg-muted px-3 text-sm font-semibold"
-                      >
-                        <LogOut className="size-4" aria-hidden />
-                        Déconnexion
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <Link
-                        href="/connexion"
-                        onClick={closeAll}
-                        className="flex h-10 flex-1 items-center justify-center rounded-md bg-foreground text-sm font-semibold text-background"
-                      >
-                        Se connecter
-                      </Link>
-                      <Link
-                        href="/inscription"
-                        onClick={closeAll}
-                        className="flex h-10 flex-1 items-center justify-center rounded-md bg-muted text-sm font-semibold"
-                      >
-                        Créer un compte
-                      </Link>
-                    </>
-                  )}
-                </div>
               </motion.nav>
             )}
           </AnimatePresence>

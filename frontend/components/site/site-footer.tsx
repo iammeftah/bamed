@@ -1,5 +1,10 @@
+// frontend/components/site/site-footer.tsx
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 /** Add or remove links here, the columns follow. */
 const columns = [
@@ -38,6 +43,12 @@ const linkClass =
   "text-base text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline";
 
 export function SiteFooter() {
+  const pathname = usePathname();
+  const { status } = useAuth();
+
+  // The back office has its own layout: no public footer there
+  if (pathname.startsWith("/admin")) return null;
+
   return (
     <footer className="overflow-hidden bg-muted text-foreground">
       <div className="mx-auto w-full max-w-[1440px] px-5 pt-16 md:px-10 md:pt-24">
@@ -80,7 +91,15 @@ export function SiteFooter() {
         </div>
 
         <div className="mt-14 flex flex-col gap-4 border-t border-border py-6 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between md:mt-20">
-          <p>© {new Date().getFullYear()} BAMED. Tous droits réservés.</p>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+            <p>© {new Date().getFullYear()} BAMED. Tous droits réservés.</p>
+            <Link
+              href={status === "authenticated" ? "/admin" : "/admin/connexion"}
+              className="underline-offset-4 transition-colors hover:text-foreground hover:underline"
+            >
+              {status === "authenticated" ? "Tableau de bord" : "Espace équipe"}
+            </Link>
+          </div>
           <a
             href="#"
             className="group inline-flex items-center gap-2 font-semibold text-foreground underline-offset-4 hover:underline"

@@ -5,7 +5,7 @@ import { ScrollShift, Tilt, TiltGlare } from "@/components/landing/depth";
 import { categories } from "@/lib/products";
 
 /** Each column scrolls at a different speed, which creates depth between tiles. */
-const shifts = [28, -10, 44, 0];
+const shifts = [28, -30, 44, -10];
 
 export function CategoryStrip() {
   return (

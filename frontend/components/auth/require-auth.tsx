@@ -1,3 +1,4 @@
+// frontend/components/auth/require-auth.tsx
 "use client";
 
 import { useEffect, type ReactNode } from "react";
@@ -19,7 +20,7 @@ export function RequireAuth({
 
   useEffect(() => {
     if (status === "anonymous") {
-      router.replace(`/connexion?next=${encodeURIComponent(pathname)}`);
+      router.replace(`/admin/connexion?next=${encodeURIComponent(pathname)}`);
     }
   }, [status, pathname, router]);
 

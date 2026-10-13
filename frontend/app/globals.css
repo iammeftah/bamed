@@ -42,6 +42,7 @@
   --gold: #c9a24b;
   --gold-foreground: #111111;
   --sale: #d30005;
+  --success: #27a644;
 }
 
 .dark {
@@ -120,6 +121,7 @@
   --color-gold: var(--gold);
   --color-gold-foreground: var(--gold-foreground);
   --color-sale: var(--sale);
+  --color-success: var(--success); 
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -241,4 +243,58 @@
   .card-fade {
     transition: none;
   }
+}
+
+
+
+/* ---------- Atelier: browser surfaces ---------- */
+
+::selection {
+  background: color-mix(in oklch, var(--gold) 45%, transparent);
+  color: inherit;
+}
+
+input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 9999px;
+}
+input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 9999px;
+}
+
+
+/* ---------- Back-office theme (scoped, independent of the storefront theme) ---------- */
+.backoffice {
+  color-scheme: dark;
+  --background: #010102;
+  --foreground: #f7f8f8;
+  --card: #0f1011;
+  --card-foreground: #f7f8f8;
+  --popover: #141516;
+  --popover-foreground: #f7f8f8;
+  --primary: #5e6ad2;
+  --primary-foreground: #ffffff;
+  --secondary: #141516;
+  --secondary-foreground: #f7f8f8;
+  --muted: #141516;
+  --muted-foreground: #8a8f98;
+  --accent: #18191a;
+  --accent-foreground: #f7f8f8;
+  --destructive: #e5484d;
+  --border: #23252a;
+  --input: #34343a;
+  --ring: #5e69d1;
+  --success: #27a644;
 }

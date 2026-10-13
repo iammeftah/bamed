@@ -1,11 +1,13 @@
-export type Role = "admin" | "manager" | "customer";
+// frontend/types/auth.ts
+/** Only the back office has accounts. Customers never sign in. */
+export type Role = "admin";
 
 export type User = {
   id: string;
   name: string;
-  email: string;
+  /** International format, e.g. +212612345678 */
+  phone: string;
   role: Role;
 };
 
-export type LoginInput = { email: string; password: string };
-export type RegisterInput = { name: string; email: string; password: string };
+export type LoginInput = { phone: string; password: string };

@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
 import { Shop } from "@/components/shop/shop";
 import type { Product } from "@/lib/products";
+import { parseShopParams, toQueryString } from "@/lib/shop-query";
 import { productsService } from "@/services/products.service";
 
 export const metadata: Metadata = {
   title: "Boutique | BAMED",
   description:
-    "Chemises, pantalons, vestes et maille pour homme. Filtrez par taille, couleur ou prix.",
+    "Chemises, pantalons, vestes et maille pour homme. Recherchez et filtrez par taille, couleur ou prix.",
 };
 
 export default async function BoutiquePage({
   searchParams,
 }: {
-  searchParams: Promise<{ categorie?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const { categorie } = await searchParams;
+  // Everything in the URL is validated against allowlists before use
+  const initial = parseShopParams(await searchParams);
 
   let products: Product[] = [];
   let loadError = false;
@@ -27,10 +29,10 @@ export default async function BoutiquePage({
   return (
     <main className="overflow-x-clip bg-background">
       <Shop
-        key={categorie ?? "tous"}
+        key={toQueryString(initial, Number.MAX_SAFE_INTEGER)}
         products={products}
         loadError={loadError}
-        initialType={categorie}
+        initial={initial}
       />
     </main>
   );
