@@ -1,5 +1,10 @@
 /**
- * Product endpoints expected from the backend:
+ * Endpoints expected from the backend:
+ *
+ *   GET    /categories              -> StoreCategory[]  or  { items | content | data: [...] }
+ *          { id | slug, label | name, sizeScale?, image? }
+ *          sizeScale is one of: letters, pants, jeans, shoes, unique
+ *
  *   GET    /products?query&type&minPrice&maxPrice&sale&featured&sort&page&size
  *          -> Product[]  or  { items | content | data: Product[] }
  *   GET    /products/:id            -> Product (404 gives null)
@@ -7,10 +12,10 @@
  *   PUT    /products/:id            -> Product      (admin)
  *   DELETE /products/:id            -> 204          (admin)
  *
- * Model: a product has ONE type and several colours. Each colour has its own photos:
- *   { id, name, type, price, sizes,
+ * Model: a product has ONE category and several colours. Each colour has its own photos:
+ *   { id, name, type (category id), price, sizes,
  *     colors: [{ name, hex, images: [{ src, alt } | "url", ...] }, ...] }
- * Photos are shown per colour, so a product needs at least one colour to have images.
+ * The category decides the size scale (letters, pants, jeans, shoes, unique).
  * Older backends that send "images" / "image" on the product still work: those photos
  * are shared by every colour that has none of its own.
  */
@@ -18,12 +23,13 @@ import { ApiError, apiFetch } from "@/lib/api/client";
 import { mocksEnabled } from "@/lib/config";
 import {
   products as sampleProducts,
-  productTypes,
+  sampleCategories,
   type Product,
   type ProductColor,
   type ProductImage,
-  type ProductType,
+  type StoreCategory,
 } from "@/lib/products";
+import { defaultScale, isScaleId } from "@/lib/sizes";
 
 export type ProductSort = "nouveautes" | "prix-asc" | "prix-desc";
 
@@ -45,12 +51,25 @@ type ImageDto = string | ProductImage;
 
 type ColorDto = { name: string; hex: string; images?: ImageDto[] };
 
-type ProductDto = Partial<Omit<Product, "colors" | "type">> & {
+type CategoryDto = {
+  id?: string | number;
+  slug?: string;
+  label?: string;
+  name?: string;
+  sizeScale?: string;
+  image?: string;
+};
+
+type ProductDto = Partial<
+  Omit<Product, "colors" | "type" | "sizeScale" | "category">
+> & {
   id: string | number;
   name: string;
   price: number | string;
   createdAt?: string;
   type?: string;
+  categoryId?: string | number;
+  category?: string;
   colors?: ColorDto[];
   /** Older backends send photos on the product itself */
   images?: ImageDto[];
@@ -58,9 +77,14 @@ type ProductDto = Partial<Omit<Product, "colors" | "type">> & {
   alt?: string;
 };
 
-type ListDto =
-  | ProductDto[]
-  | { items?: ProductDto[]; content?: ProductDto[]; data?: ProductDto[] };
+type ListDto<T> =
+  | T[]
+  | { items?: T[]; content?: T[]; data?: T[] };
+
+function unwrap<T>(res: ListDto<T>): T[] {
+  if (Array.isArray(res)) return res;
+  return res.items ?? res.content ?? res.data ?? [];
+}
 
 function toImages(list: ImageDto[] | undefined, alt: string): ProductImage[] {
   return (list ?? []).map((img) =>
@@ -82,14 +106,25 @@ function toColors(dto: ProductDto): ProductColor[] {
   });
 }
 
-function toProduct(dto: ProductDto): Product {
-  const known = productTypes.find((t) => t.id === dto.type);
-  const type: ProductType = known?.id ?? "chemises";
+function toCategory(dto: CategoryDto): StoreCategory {
+  const id = String(dto.id ?? dto.slug ?? "");
+  return {
+    id,
+    label: dto.label ?? dto.name ?? id,
+    sizeScale: isScaleId(dto.sizeScale) ? dto.sizeScale : defaultScale,
+    image: dto.image || undefined,
+  };
+}
+
+function toProduct(dto: ProductDto, categories: StoreCategory[]): Product {
+  const typeId = String(dto.type ?? dto.categoryId ?? "");
+  const cat = categories.find((c) => c.id === typeId);
   return {
     id: String(dto.id),
     name: dto.name,
-    category: dto.category ?? (known ? `${known.label} homme` : ""),
-    type,
+    category: cat?.label ?? dto.category ?? "",
+    type: typeId,
+    sizeScale: cat?.sizeScale ?? defaultScale,
     price: Number(dto.price),
     oldPrice: dto.oldPrice != null ? Number(dto.oldPrice) : undefined,
     tag: dto.tag,
@@ -100,17 +135,23 @@ function toProduct(dto: ProductDto): Product {
   };
 }
 
-function unwrap(res: ListDto): ProductDto[] {
-  if (Array.isArray(res)) return res;
-  return res.items ?? res.content ?? res.data ?? [];
-}
-
 const cache = { revalidate: 60, tags: ["products"] };
+
+async function getCategories(): Promise<StoreCategory[]> {
+  if (mocksEnabled) return sampleCategories;
+  const res = await apiFetch<ListDto<CategoryDto>>("/categories", {
+    next: { revalidate: 60, tags: ["categories"] },
+  });
+  return unwrap(res).map(toCategory);
+}
 
 async function getProducts(q: ProductQuery = {}): Promise<Product[]> {
   if (mocksEnabled) return sampleList(q);
-  const res = await apiFetch<ListDto>("/products", { query: q, next: cache });
-  return unwrap(res).map(toProduct);
+  const [categories, res] = await Promise.all([
+    getCategories(),
+    apiFetch<ListDto<ProductDto>>("/products", { query: q, next: cache }),
+  ]);
+  return unwrap(res).map((dto) => toProduct(dto, categories));
 }
 
 async function getFeatured(limit = 3): Promise<Product[]> {
@@ -124,11 +165,13 @@ async function getNewArrivals(limit = 8): Promise<Product[]> {
 async function getProduct(id: string): Promise<Product | null> {
   if (mocksEnabled) return sampleProducts.find((p) => p.id === id) ?? null;
   try {
-    const dto = await apiFetch<ProductDto>(
-      `/products/${encodeURIComponent(id)}`,
-      { next: cache },
-    );
-    return toProduct(dto);
+    const [categories, dto] = await Promise.all([
+      getCategories(),
+      apiFetch<ProductDto>(`/products/${encodeURIComponent(id)}`, {
+        next: cache,
+      }),
+    ]);
+    return toProduct(dto, categories);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;
@@ -136,17 +179,23 @@ async function getProduct(id: string): Promise<Product | null> {
 }
 
 function demoOnly(): never {
-  throw new ApiError(503, "Mode démo : connectez un backend pour modifier le catalogue.");
+  throw new ApiError(
+    503,
+    "Mode démo : connectez un backend pour modifier le catalogue.",
+  );
 }
 
 async function createProduct(input: ProductInput): Promise<Product> {
   if (mocksEnabled) demoOnly();
-  const dto = await apiFetch<ProductDto>("/products", {
-    method: "POST",
-    auth: true,
-    body: input,
-  });
-  return toProduct(dto);
+  const [categories, dto] = await Promise.all([
+    getCategories(),
+    apiFetch<ProductDto>("/products", {
+      method: "POST",
+      auth: true,
+      body: input,
+    }),
+  ]);
+  return toProduct(dto, categories);
 }
 
 async function updateProduct(
@@ -154,12 +203,15 @@ async function updateProduct(
   input: Partial<ProductInput>,
 ): Promise<Product> {
   if (mocksEnabled) demoOnly();
-  const dto = await apiFetch<ProductDto>(`/products/${encodeURIComponent(id)}`, {
-    method: "PUT",
-    auth: true,
-    body: input,
-  });
-  return toProduct(dto);
+  const [categories, dto] = await Promise.all([
+    getCategories(),
+    apiFetch<ProductDto>(`/products/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      auth: true,
+      body: input,
+    }),
+  ]);
+  return toProduct(dto, categories);
 }
 
 async function deleteProduct(id: string): Promise<void> {
@@ -171,6 +223,7 @@ async function deleteProduct(id: string): Promise<void> {
 }
 
 export const productsService = {
+  getCategories,
   getProducts,
   getFeatured,
   getNewArrivals,

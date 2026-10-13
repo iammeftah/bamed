@@ -12,8 +12,14 @@ import {
 import { Pagination } from "@/components/shop/pagination";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   PAGE_SIZE,
-  sizeOrder,
   sortOptions,
   toQueryString,
   type ShopState,
@@ -21,13 +27,12 @@ import {
 } from "@/lib/shop-query";
 import {
   formatNumber,
-  productTypes,
   type Product,
   type ProductColor,
-  type ProductType,
+  type StoreCategory,
 } from "@/lib/products";
+import { scaleOrder, sizeScales, type SizeScaleId } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -39,6 +44,13 @@ function toggle<T>(list: T[], value: T): T[] {
   return list.includes(value) ? list.filter((x) => x !== value) : [...list, value];
 }
 
+type SizeGroup = {
+  id: SizeScaleId;
+  title: string;
+  hint: string;
+  sizes: string[];
+};
+
 /* ---------- Filters panel (sidebar on desktop, bottom sheet on mobile) ---------- */
 
 function FiltersPanel({
@@ -46,7 +58,8 @@ function FiltersPanel({
   update,
   onReset,
   activeCount,
-  allSizes,
+  sizeGroups,
+  sizesNeedCategory,
   allColors,
   priceCeiling,
 }: {
@@ -54,7 +67,8 @@ function FiltersPanel({
   update: (patch: Partial<ShopState>) => void;
   onReset: () => void;
   activeCount: number;
-  allSizes: string[];
+  sizeGroups: SizeGroup[];
+  sizesNeedCategory: boolean;
   allColors: ProductColor[];
   priceCeiling: number;
 }) {
@@ -62,30 +76,40 @@ function FiltersPanel({
 
   return (
     <div className="space-y-8">
-      <div>
-        <h3 className="text-sm font-semibold">Tailles</h3>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {allSizes.map((s) => {
-            const on = state.sizes.includes(s);
-            return (
-              <button
-                key={s}
-                type="button"
-                aria-pressed={on}
-                onClick={() => update({ sizes: toggle(state.sizes, s) })}
-                className={cn(
-                  "h-10 min-w-11 rounded-md px-3 text-sm font-semibold transition-colors",
-                  on
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-foreground hover:bg-foreground/10",
-                )}
-              >
-                {s}
-              </button>
-            );
-          })}
+      {sizeGroups.map((g) => (
+        <div key={g.id}>
+          <h3 className="text-sm font-semibold">{g.title}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">{g.hint}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {g.sizes.map((s) => {
+              const on = state.sizes.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => update({ sizes: toggle(state.sizes, s) })}
+                  className={cn(
+                    "h-10 min-w-11 rounded-md px-3 text-sm font-semibold transition-colors",
+                    on
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-foreground hover:bg-foreground/10",
+                  )}
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      ))}
+
+      {sizesNeedCategory && (
+        <p className="text-xs text-muted-foreground">
+          Choisissez une catégorie (jeans, sneakers, pantalons...) pour filtrer
+          par taille ou par pointure.
+        </p>
+      )}
 
       <div>
         <h3 className="text-sm font-semibold">Couleurs</h3>
@@ -159,10 +183,12 @@ function FiltersPanel({
 
 export function Shop({
   products,
+  categories,
   loadError = false,
   initial,
 }: {
   products: Product[];
+  categories: StoreCategory[];
   loadError?: boolean;
   /** Validated state read from the URL on the server */
   initial: ShopState;
@@ -170,10 +196,6 @@ export function Shop({
   const priceCeiling =
     Math.ceil(Math.max(100, ...products.map((p) => p.price)) / 100) * 100;
 
-  const allSizes = useMemo(
-    () => sizeOrder.filter((s) => products.some((p) => p.sizes.includes(s))),
-    [products],
-  );
   const allColors = useMemo(() => {
     const list: ProductColor[] = [];
     for (const p of products) {
@@ -193,6 +215,30 @@ export function Shop({
   }));
   const [drawer, setDrawer] = useState(false);
   const gridRef = useRef<HTMLDivElement>(null);
+
+  // Size buttons come from the size scale of the products. Numbers (40, 42...)
+  // mean different things for jeans, trousers and shoes, so they only show
+  // inside a category.
+  const sizeGroups = useMemo(() => {
+    const pool =
+      state.type === "tous"
+        ? products
+        : products.filter((p) => p.type === state.type);
+    const groups: SizeGroup[] = [];
+    for (const id of scaleOrder) {
+      if (state.type === "tous" && id !== "letters") continue;
+      const scale = sizeScales[id];
+      const used = scale.sizes.filter((s) =>
+        pool.some((p) => p.sizeScale === id && p.sizes.includes(s)),
+      );
+      if (used.length)
+        groups.push({ id, title: scale.title, hint: scale.hint, sizes: used });
+    }
+    return groups;
+  }, [products, state.type]);
+
+  const sizesNeedCategory =
+    state.type === "tous" && products.some((p) => p.sizeScale !== "letters");
 
   // Any filter change goes back to page 1
   const update = (patch: Partial<ShopState>) =>
@@ -254,15 +300,13 @@ export function Shop({
   // Search runs on the whole catalogue (all pages), then we cut it into pages
   const filtered = useMemo(() => {
     const tokens = normalize(state.query.trim()).split(/\s+/).filter(Boolean);
-    const typeLabel = (t: ProductType) =>
-      productTypes.find((x) => x.id === t)?.label ?? "";
     const limit = state.maxPrice ?? priceCeiling;
 
     const list = products.filter((p) => {
       if (state.type !== "tous" && p.type !== state.type) return false;
       if (tokens.length) {
         const hay = normalize(
-          `${p.name} ${p.category} ${typeLabel(p.type)} ${p.colors.map((c) => c.name).join(" ")}`,
+          `${p.name} ${p.category} ${p.colors.map((c) => c.name).join(" ")}`,
         );
         if (!tokens.every((t) => hay.includes(t))) return false;
       }
@@ -325,8 +369,16 @@ export function Shop({
       onRemove: () => update({ saleOnly: false }),
     });
 
-  const typeCount = (id: ProductType | "tous") =>
+  const typeCount = (id: string) =>
     id === "tous" ? products.length : products.filter((p) => p.type === id).length;
+
+  // Tabs come from the categories. Empty ones stay hidden (except the open one).
+  const tabs: { id: string; label: string }[] = [
+    { id: "tous", label: "Tout" },
+    ...categories.map((c) => ({ id: c.id, label: c.label })),
+  ].filter(
+    (t) => t.id === "tous" || t.id === state.type || typeCount(t.id) > 0,
+  );
 
   const filtersPanel = (
     <FiltersPanel
@@ -334,7 +386,8 @@ export function Shop({
       update={update}
       onReset={reset}
       activeCount={activeCount}
-      allSizes={allSizes}
+      sizeGroups={sizeGroups}
+      sizesNeedCategory={sizesNeedCategory}
       allColors={allColors}
       priceCeiling={priceCeiling}
     />
@@ -351,8 +404,8 @@ export function Shop({
             Boutique
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Chemises, pantalons, vestes et maille. Recherchez, filtrez par
-            taille, couleur ou prix pour trouver votre pièce.
+            Hoodies, jeans, sneakers et plus. Recherchez, filtrez par taille,
+            couleur ou prix pour trouver votre pièce.
           </p>
         </div>
       </section>
@@ -374,14 +427,14 @@ export function Shop({
             aria-label="Catégories"
             className="-mx-5 flex overflow-x-auto border-b border-border px-5 md:mx-0 md:px-0 [scrollbar-width:none]"
           >
-            {[{ id: "tous" as const, label: "Tout" }, ...productTypes].map((t) => {
+            {tabs.map((t) => {
               const on = state.type === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => update({ type: t.id })}
+                  onClick={() => update({ type: t.id, sizes: [] })}
                   className={cn(
                     "relative shrink-0 whitespace-nowrap px-3 py-3 text-[13px] font-semibold tracking-tight transition-opacity first:md:-ml-3",
                     on ? "opacity-100" : "opacity-60 hover:opacity-100",

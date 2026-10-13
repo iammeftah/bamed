@@ -111,8 +111,6 @@ export default function AdminsPage() {
 
   if (!d.ready) return <PageSkeleton />;
 
-  
-
   return (
     <>
       <PageHeader

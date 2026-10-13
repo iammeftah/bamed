@@ -1,4 +1,4 @@
-import { productTypes, type ProductType } from "@/lib/products";
+import { allSizeValues } from "@/lib/sizes";
 
 export type Sort = "pertinence" | "nouveautes" | "prix-asc" | "prix-desc";
 
@@ -9,14 +9,13 @@ export const sortOptions: { id: Sort; label: string }[] = [
   { id: "prix-desc", label: "Prix décroissant" },
 ];
 
-export const sizeOrder = ["S", "M", "L", "XL", "38", "40", "42", "44"];
-
 /** Products per page. Raise it when the catalogue grows. */
 export const PAGE_SIZE = 8;
 
 export type ShopState = {
   query: string;
-  type: ProductType | "tous";
+  /** "tous" or the id of a category */
+  type: string;
   sizes: string[];
   colors: string[];
   /** null = no price limit chosen */
@@ -42,15 +41,19 @@ const csv = (v: string | undefined, max = 8) =>
 
 const COLOR_NAME = /^[\p{L}][\p{L} '-]{0,29}$/u;
 
-/** Reads URL search params and returns a safe, validated state. */
-export function parseShopParams(raw: Raw): ShopState {
+/**
+ * Reads URL search params and returns a safe, validated state.
+ * `categoryIds` are the ids of the categories that exist right now.
+ */
+export function parseShopParams(raw: Raw, categoryIds: string[]): ShopState {
   const query = (first(raw.q) ?? "").slice(0, 80);
 
   const cat = first(raw.categorie);
-  const type: ShopState["type"] =
-    productTypes.find((t) => t.id === cat)?.id ?? "tous";
+  const type = cat && categoryIds.includes(cat) ? cat : "tous";
 
-  const sizes = csv(first(raw.tailles)).filter((s) => sizeOrder.includes(s));
+  const sizes = csv(first(raw.tailles)).filter((s) =>
+    allSizeValues.includes(s),
+  );
   const colors = csv(first(raw.couleurs)).filter((c) => COLOR_NAME.test(c));
 
   const max = Number(first(raw.max));

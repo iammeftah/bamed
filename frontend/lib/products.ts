@@ -1,10 +1,4 @@
-export type ProductType =
-  | "chemises"
-  | "t-shirts"
-  | "polos"
-  | "pantalons"
-  | "vestes"
-  | "maille";
+import type { SizeScaleId } from "@/lib/sizes";
 
 export type ProductImage = { src: string; alt: string };
 
@@ -15,13 +9,25 @@ export type ProductColor = {
   images: ProductImage[];
 };
 
+/** A shop category. Comes from the dashboard / backend, never hardcoded in the UI. */
+export type StoreCategory = {
+  id: string;
+  label: string;
+  /** Which sizes products of this category offer */
+  sizeScale: SizeScaleId;
+  /** Optional tile photo for the home page */
+  image?: string;
+};
+
 export type Product = {
   id: string;
   name: string;
-  /** Display label shown under the name */
+  /** Category label shown under the name */
   category: string;
-  /** One type per product, shared by all its colours. Used by the shop filters. */
-  type: ProductType;
+  /** Id of the category, shared by all colours. Used by the shop filters. */
+  type: string;
+  /** Size scale of the category, copied here so components do not need a lookup */
+  sizeScale: SizeScaleId;
   price: number;
   oldPrice?: number;
   tag?: "Nouveau" | "Promo";
@@ -32,27 +38,11 @@ export type Product = {
   sizes: string[];
 };
 
-export type Category = {
-  name: string;
-  href: string;
-  image: string;
-  alt: string;
-};
-
 export type Brand = {
   name: string;
   /** Drop the logo file in public/images/brands with this exact file name */
   src: string;
 };
-
-export const productTypes: { id: ProductType; label: string }[] = [
-  { id: "chemises", label: "Chemises" },
-  { id: "t-shirts", label: "T-shirts" },
-  { id: "polos", label: "Polos" },
-  { id: "pantalons", label: "Pantalons" },
-  { id: "vestes", label: "Vestes" },
-  { id: "maille", label: "Maille" },
-];
 
 export const images = {
   hero: {
@@ -97,34 +87,51 @@ export const brands: Brand[] = [
   { name: "Reebok", src: "/images/brands/reebok.svg" },
 ];
 
-export const categories: Category[] = [
+/* ---------- Sample data (used while there is no backend) ---------- */
+
+/**
+ * Sample categories. With a backend they come from GET /categories and the
+ * dashboard, so nothing in the UI depends on this list.
+ */
+export const sampleCategories: StoreCategory[] = [
+  { id: "hoodies", label: "Hoodies", sizeScale: "letters" },
+  { id: "t-shirts", label: "T-shirts", sizeScale: "letters" },
+  { id: "jeans", label: "Jeans", sizeScale: "jeans" },
   {
-    name: "Chemises",
-    href: "/boutique?categorie=chemises",
-    image: "/images/categories/shirts.jpg",
-    alt: "Collection de chemises pour homme",
-  },
-  {
-    name: "Pantalons",
-    href: "/boutique?categorie=pantalons",
+    id: "pantalons",
+    label: "Pantalons",
+    sizeScale: "pants",
     image: "/images/categories/trousers.jpg",
-    alt: "Collection de pantalons pour homme",
   },
   {
-    name: "Vestes",
-    href: "/boutique?categorie=vestes",
+    id: "vestes",
+    label: "Vestes",
+    sizeScale: "letters",
     image: "/images/categories/outerwear.jpg",
-    alt: "Collection de vestes et manteaux pour homme",
   },
+  { id: "sneakers", label: "Sneakers", sizeScale: "shoes" },
   {
-    name: "Maille",
-    href: "/boutique?categorie=maille",
-    image: "/images/categories/knitwear.jpg",
-    alt: "Collection de mailles pour homme",
+    id: "chemises",
+    label: "Chemises",
+    sizeScale: "letters",
+    image: "/images/categories/shirts.jpg",
   },
+  { id: "polos", label: "Polos", sizeScale: "letters" },
+  {
+    id: "maille",
+    label: "Maille",
+    sizeScale: "letters",
+    image: "/images/categories/knitwear.jpg",
+  },
+  { id: "accessoires", label: "Accessoires", sizeScale: "unique" },
 ];
 
-/* ---------- Sample catalogue ---------- */
+/** Category fields of a sample product, taken from the category list above. */
+function inCategory(id: string) {
+  const c = sampleCategories.find((x) => x.id === id);
+  if (!c) throw new Error(`Unknown sample category: ${id}`);
+  return { type: c.id, category: c.label, sizeScale: c.sizeScale };
+}
 
 type ColorBase = { name: string; hex: string };
 
@@ -167,15 +174,14 @@ const ciel = { name: "Bleu ciel", hex: "#a9c4de" };
 const sable = { name: "Sable", hex: "#d6c7a8" };
 const sauge = { name: "Sauge", hex: "#a3b18a" };
 
-const tops = ["S", "M", "L", "XL"];
+const tops = ["S", "M", "L", "XL", "XXL"];
 const bottoms = ["38", "40", "42", "44"];
 
 export const products: Product[] = [
   {
     id: "oxford-shirt",
     name: "Chemise Oxford",
-    category: "Chemises homme",
-    type: "chemises",
+    ...inCategory("chemises"),
     price: 490,
     tag: "Nouveau",
     featured: true,
@@ -189,8 +195,7 @@ export const products: Product[] = [
   {
     id: "linen-camp-shirt",
     name: "Chemise Camp en Lin",
-    category: "Chemises homme",
-    type: "chemises",
+    ...inCategory("chemises"),
     price: 420,
     tag: "Nouveau",
     addedAt: 7,
@@ -203,8 +208,7 @@ export const products: Product[] = [
   {
     id: "heavyweight-tee",
     name: "T-shirt Épais",
-    category: "T-shirts homme",
-    type: "t-shirts",
+    ...inCategory("t-shirts"),
     price: 220,
     addedAt: 2,
     colors: [
@@ -217,8 +221,7 @@ export const products: Product[] = [
   {
     id: "pique-polo",
     name: "Polo Piqué",
-    category: "Polos homme",
-    type: "polos",
+    ...inCategory("polos"),
     price: 330,
     tag: "Nouveau",
     addedAt: 6,
@@ -231,8 +234,7 @@ export const products: Product[] = [
   {
     id: "tailored-chinos",
     name: "Chino Ajusté",
-    category: "Pantalons homme",
-    type: "pantalons",
+    ...inCategory("pantalons"),
     price: 590,
     oldPrice: 720,
     tag: "Promo",
@@ -246,8 +248,7 @@ export const products: Product[] = [
   {
     id: "wool-overshirt",
     name: "Surchemise en Laine Mélangée",
-    category: "Vestes homme",
-    type: "vestes",
+    ...inCategory("vestes"),
     price: 890,
     featured: true,
     addedAt: 4,
@@ -260,8 +261,7 @@ export const products: Product[] = [
   {
     id: "merino-crew-knit",
     name: "Pull Mérinos Col Rond",
-    category: "Maille homme",
-    type: "maille",
+    ...inCategory("maille"),
     price: 640,
     oldPrice: 790,
     tag: "Promo",
@@ -276,8 +276,7 @@ export const products: Product[] = [
   {
     id: "relaxed-trousers",
     name: "Pantalon Fluide à Pinces",
-    category: "Pantalons homme",
-    type: "pantalons",
+    ...inCategory("pantalons"),
     price: 620,
     tag: "Nouveau",
     addedAt: 5,

@@ -152,7 +152,7 @@ export function AdminLoginForm({ next }: { next: string }) {
           <button
             type="submit"
             disabled={pending}
-            className="flex h-10 w-full items-center justify-between rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-[#828fff] active:bg-[#5e69d1] disabled:opacity-60"
+            className="flex h-10 w-full items-center justify-between rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 active:bg-primary/80 disabled:opacity-60"
           >
             Se connecter
             {pending ? (

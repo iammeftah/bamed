@@ -1,4 +1,4 @@
-import { productTypes, products as storefront } from "@/lib/products";
+import { products as storefront, sampleCategories } from "@/lib/products";
 import { DAY, addDays, startOfDay } from "@/lib/dashboard/stats";
 import type {
   AdminUser,
@@ -20,12 +20,16 @@ function rng(seed: number) {
 }
 
 const descriptions: Record<string, string> = {
+  hoodies: "Hoodies et sweats à capuche, coupes oversize et classiques.",
+  "t-shirts": "Basiques et graphiques en coton, du quotidien.",
+  jeans: "Coupes droites, baggy et ajustées, tailles W28 à W40.",
+  pantalons: "Cargos, joggings et pantalons fluides.",
+  vestes: "Vestes, coupe-vents et surchemises de saison.",
+  sneakers: "Sneakers et baskets, pointures 38 à 46.",
   chemises: "Oxford, lin, coupes classiques et décontractées.",
-  "t-shirts": "Basiques en coton, du quotidien.",
   polos: "Piqué et maille légère.",
-  pantalons: "Chinos et pantalons fluides.",
-  vestes: "Surchemises et vestes de saison.",
   maille: "Pulls et mailles fines.",
+  accessoires: "Casquettes, sacs et accessoires en taille unique.",
 };
 
 const stockByIndex = [34, 8, 64, 27, 3, 15, 0, 21];
@@ -33,11 +37,12 @@ const stockByIndex = [34, 8, 64, 27, 3, 15, 0, 21];
 export function seedData(now: number): DashboardData {
   const r = rng(20260929);
 
-  const categories: Category[] = productTypes.map((t, i) => ({
-    id: t.id,
-    name: t.label,
-    slug: t.id,
-    description: descriptions[t.id] ?? "",
+  const categories: Category[] = sampleCategories.map((c, i) => ({
+    id: c.id,
+    name: c.label,
+    slug: c.id,
+    description: descriptions[c.id] ?? "",
+    sizeScale: c.sizeScale,
     createdAt: now - (150 - i) * DAY,
   }));
 
@@ -46,6 +51,7 @@ export function seedData(now: number): DashboardData {
     sku: `BAM-${1001 + i}`,
     name: p.name,
     categoryId: p.type,
+    colors: p.colors,
     price: p.price,
     oldPrice: p.oldPrice,
     cost: Math.round(p.price * 0.52),
@@ -56,7 +62,7 @@ export function seedData(now: number): DashboardData {
     createdAt: now - (100 - i * 6) * DAY,
   }));
 
-    const admins: AdminUser[] = [
+  const admins: AdminUser[] = [
     {
       id: "dev-admin",
       name: "Admin BAMED",

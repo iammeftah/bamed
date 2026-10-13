@@ -2,12 +2,14 @@ import { ArrowUpRight } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
 import { ScrollShift, Tilt, TiltGlare } from "@/components/landing/depth";
-import { categories } from "@/lib/products";
+import type { StoreCategory } from "@/lib/products";
 
 /** Each column scrolls at a different speed, which creates depth between tiles. */
 const shifts = [28, -30, 44, -10];
 
-export function CategoryStrip() {
+export function CategoryStrip({ categories }: { categories: StoreCategory[] }) {
+  if (categories.length === 0) return null;
+
   return (
     <section className="bg-background py-16 md:py-24">
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
@@ -22,11 +24,11 @@ export function CategoryStrip() {
 
         <RevealGroup className="grid grid-cols-2 gap-2 lg:grid-cols-4">
           {categories.map((c, i) => (
-            <RevealItem key={c.name}>
+            <RevealItem key={c.id}>
               <ScrollShift speed={shifts[i % shifts.length]}>
                 <Tilt max={7}>
                   <a
-                    href={c.href}
+                    href={`/boutique?categorie=${encodeURIComponent(c.id)}`}
                     className="group relative block"
                     style={{ transformStyle: "preserve-3d" }}
                   >
@@ -35,7 +37,7 @@ export function CategoryStrip() {
                       <div className="transition-transform duration-700 ease-out group-hover:scale-105">
                         <ImagePlaceholder
                           src={c.image}
-                          alt={c.alt}
+                          alt={`Collection ${c.label}`}
                           ratio="3 / 4"
                           label="Photo catégorie 3:4"
                           kind="category"
@@ -56,7 +58,7 @@ export function CategoryStrip() {
                       style={{ transform: "translateZ(48px)" }}
                     >
                       <span className="font-display text-2xl font-bold uppercase leading-none text-white sm:text-3xl md:text-5xl">
-                        {c.name}
+                        {c.label}
                       </span>
                       <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-neutral-950 md:size-12">
                         <ArrowUpRight
@@ -65,7 +67,7 @@ export function CategoryStrip() {
                         />
                       </span>
                     </div>
-                    <span className="sr-only">Découvrir {c.name}</span>
+                    <span className="sr-only">Découvrir {c.label}</span>
                   </a>
                 </Tilt>
               </ScrollShift>

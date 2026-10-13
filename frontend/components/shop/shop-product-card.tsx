@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { ProductMedia } from "@/components/shop/product-media";
 import { formatNumber, type Product } from "@/lib/products";
+import { sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 
 export function ShopProductCard({ product }: { product: Product }) {
@@ -122,7 +123,7 @@ export function ShopProductCard({ product }: { product: Product }) {
 
         {product.sizes.length > 0 && (
           <p className="text-xs text-muted-foreground">
-            Tailles : {product.sizes.join(" · ")}
+            Tailles : {sortSizes(product.sizes).join(" · ")}
           </p>
         )}
       </div>

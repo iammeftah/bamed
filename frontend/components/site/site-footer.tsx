@@ -6,48 +6,58 @@ import { usePathname } from "next/navigation";
 import { ArrowUp } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 
-/** Add or remove links here, the columns follow. */
-const columns = [
-  {
-    title: "Boutique",
-    links: [
-      { label: "Tout voir", href: "/boutique" },
-      { label: "Nouveautés", href: "/#nouveautes" },
-      { label: "Chemises", href: "/boutique?categorie=chemises" },
-      { label: "Pantalons", href: "/boutique?categorie=pantalons" },
-      { label: "Vestes", href: "/boutique?categorie=vestes" },
-      { label: "Maille", href: "/boutique?categorie=maille" },
-    ],
-  },
-  {
-    title: "Informations",
-    links: [
-      { label: "À propos", href: "/a-propos" },
-      { label: "Livraison", href: "#" },
-      { label: "Retours et échanges", href: "#" },
-      { label: "Guide des tailles", href: "#" },
-    ],
-  },
-  {
-    title: "Aide",
-    links: [
-      { label: "Contact", href: "#" },
-      { label: "Suivre ma commande", href: "#" },
-      { label: "Questions fréquentes", href: "#" },
-      { label: "Paiement sécurisé", href: "#" },
-    ],
-  },
-];
+type FooterCategory = { id: string; label: string };
+
+/** Add or remove links here, the columns follow. The shop links come from the categories. */
+function buildColumns(categories: FooterCategory[]) {
+  return [
+    {
+      title: "Boutique",
+      links: [
+        { label: "Tout voir", href: "/boutique" },
+        { label: "Nouveautés", href: "/#nouveautes" },
+        ...categories.slice(0, 6).map((c) => ({
+          label: c.label,
+          href: `/boutique?categorie=${encodeURIComponent(c.id)}`,
+        })),
+      ],
+    },
+    {
+      title: "Informations",
+      links: [
+        { label: "À propos", href: "/a-propos" },
+        { label: "Livraison", href: "#" },
+        { label: "Retours et échanges", href: "#" },
+        { label: "Guide des tailles", href: "#" },
+      ],
+    },
+    {
+      title: "Aide",
+      links: [
+        { label: "Contact", href: "#" },
+        { label: "Suivre ma commande", href: "#" },
+        { label: "Questions fréquentes", href: "#" },
+        { label: "Paiement sécurisé", href: "#" },
+      ],
+    },
+  ];
+}
 
 const linkClass =
   "text-base text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline";
 
-export function SiteFooter() {
+export function SiteFooter({
+  categories = [],
+}: {
+  categories?: FooterCategory[];
+}) {
   const pathname = usePathname();
   const { status } = useAuth();
 
   // The back office has its own layout: no public footer there
   if (pathname.startsWith("/admin")) return null;
+
+  const columns = buildColumns(categories);
 
   return (
     <footer className="overflow-hidden bg-muted text-foreground">
@@ -112,7 +122,6 @@ export function SiteFooter() {
           </a>
         </div>
       </div>
-
       {/* <div
         aria-hidden
         className="pointer-events-none -mb-[0.14em] select-none text-center font-display text-[length:clamp(6rem,30vw,26rem)] font-bold leading-[0.8] text-foreground"

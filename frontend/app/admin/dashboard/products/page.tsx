@@ -1,8 +1,23 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
-import { Pencil, Plus, Search, Trash2 } from "lucide-react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import {
+  ImagePlus,
+  Pencil,
+  Plus,
+  Search,
+  Star,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import {
   Alert,
   Badge,
@@ -15,19 +30,281 @@ import {
   PageSkeleton,
   StatCard,
   inputCls,
-  tableCls,
-  tableWrapCls,
-  tdCls,
-  thCls,
-  trCls,
 } from "@/components/dashboard/ui";
 import { useDashboard } from "@/lib/dashboard/store";
-import { formatMAD } from "@/lib/products";
+import { formatMAD, type ProductColor, type ProductImage } from "@/lib/products";
+import { scaleOfCategory, sortSizes, type SizeScale } from "@/lib/sizes";
 import type { Category, StockProduct } from "@/types/dashboard";
 
 type StatusFilter = "all" | "low" | "out" | "inactive";
 
 const num = (s: string) => Number(s.trim().replace(",", "."));
+
+/* ---------- Image reading (demo mode) ---------- */
+
+const MAX_SIDE = 720;
+const MAX_FILE = 10 * 1024 * 1024;
+const MAX_PER_COLOR = 8;
+
+/**
+ * Demo mode: shrinks the photo and returns it as a data URL, so it fits in
+ * localStorage. With a backend, upload the file (Cloudinary...) and keep the URL.
+ */
+function readImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("canvas"));
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.75));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("load"));
+    };
+    img.src = url;
+  });
+}
+
+/* ---------- One colour: name, tint and its photos ---------- */
+
+function ColorBlock({
+  index,
+  color,
+  onChange,
+  onRemove,
+}: {
+  index: number;
+  color: ProductColor;
+  onChange: (c: ProductColor) => void;
+  onRemove: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const images = color.images;
+
+  async function onFiles(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+
+    const room = MAX_PER_COLOR - images.length;
+    if (room <= 0) {
+      setError(`Maximum ${MAX_PER_COLOR} photos par couleur.`);
+      return;
+    }
+
+    setError(null);
+    setBusy(true);
+    const added: ProductImage[] = [];
+    let skipped = false;
+    for (const file of files.slice(0, room)) {
+      if (!file.type.startsWith("image/") || file.size > MAX_FILE) {
+        skipped = true;
+        continue;
+      }
+      try {
+        added.push({ src: await readImage(file), alt: "" });
+      } catch {
+        skipped = true;
+      }
+    }
+    setBusy(false);
+
+    if (added.length) onChange({ ...color, images: [...images, ...added] });
+    if (skipped) setError("Certains fichiers ont été ignorés (image, 10 Mo max).");
+    else if (files.length > room)
+      setError(`Maximum ${MAX_PER_COLOR} photos par couleur.`);
+  }
+
+  const removeImage = (n: number) =>
+    onChange({ ...color, images: images.filter((_, k) => k !== n) });
+
+  const makeCover = (n: number) =>
+    onChange({
+      ...color,
+      images: [images[n], ...images.filter((_, k) => k !== n)],
+    });
+
+  const mini =
+    "flex size-6 items-center justify-center rounded-full bg-background/90 text-foreground hover:bg-background";
+
+  return (
+    <fieldset className="rounded-lg border border-border p-3">
+      <legend className="sr-only">Couleur {index + 1}</legend>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={color.hex}
+          onChange={(e) => onChange({ ...color, hex: e.target.value })}
+          aria-label={`Teinte de la couleur ${index + 1}`}
+          className="size-9 shrink-0"
+        />
+        <input
+          value={color.name}
+          onChange={(e) => onChange({ ...color, name: e.target.value })}
+          placeholder="Nom de la couleur (ex. Noir)"
+          aria-label={`Nom de la couleur ${index + 1}`}
+          className={inputCls}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Supprimer la couleur ${color.name || index + 1}`}
+          onClick={onRemove}
+        >
+          <Trash2 aria-hidden />
+        </Button>
+      </div>
+
+      <ul className="mt-3 grid grid-cols-4 gap-2">
+        {images.map((img, n) => (
+          <li key={n} className="relative overflow-hidden rounded-md">
+            <ImagePlaceholder
+              src={img.src}
+              alt={`Photo ${n + 1}`}
+              ratio="4 / 5"
+              label=""
+              kind="product"
+              tone="dark"
+              sizes="96px"
+              rounded={false}
+            />
+            {n === 0 && (
+              <span className="absolute left-1 top-1 rounded bg-gold px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-gold-foreground">
+                Couverture
+              </span>
+            )}
+            <div className="absolute inset-x-1 bottom-1 flex justify-end gap-1">
+              {n > 0 && (
+                <button
+                  type="button"
+                  onClick={() => makeCover(n)}
+                  aria-label={`Définir la photo ${n + 1} comme couverture`}
+                  className={mini}
+                >
+                  <Star className="size-3" aria-hidden />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => removeImage(n)}
+                aria-label={`Retirer la photo ${n + 1}`}
+                className={mini}
+              >
+                <X className="size-3" aria-hidden />
+              </button>
+            </div>
+          </li>
+        ))}
+
+        {images.length < MAX_PER_COLOR && (
+          <li>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => inputRef.current?.click()}
+              className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed border-input text-[11px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+            >
+              <ImagePlus className="size-5" aria-hidden />
+              {busy ? "..." : "Ajouter"}
+            </button>
+          </li>
+        )}
+      </ul>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={onFiles}
+        className="sr-only"
+        tabIndex={-1}
+        aria-hidden
+      />
+
+      {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
+    </fieldset>
+  );
+}
+
+/* ---------- Size picker (sizes depend on the category) ---------- */
+
+function SizePicker({
+  scale,
+  value,
+  onChange,
+}: {
+  scale: SizeScale;
+  value: string[];
+  onChange: (v: string[]) => void;
+}) {
+  // Sizes saved earlier that are not in the scale stay visible, so editing never drops them silently
+  const options = [
+    ...scale.sizes,
+    ...value.filter((s) => !scale.sizes.includes(s)),
+  ];
+  const toggle = (s: string) =>
+    onChange(value.includes(s) ? value.filter((x) => x !== s) : [...value, s]);
+  const all = options.every((s) => value.includes(s));
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-xs font-medium">{scale.title}</p>
+          <p className="text-xs text-muted-foreground">
+            {scale.short} · {scale.hint}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(all ? [] : options)}
+          className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+        >
+          {all ? "Tout désélectionner" : "Tout sélectionner"}
+        </button>
+      </div>
+      <div
+        role="group"
+        aria-label="Tailles disponibles"
+        className="flex flex-wrap gap-2"
+      >
+        {options.map((s) => {
+          const on = value.includes(s);
+          return (
+            <button
+              key={s}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(s)}
+              className={
+                on
+                  ? "h-9 min-w-10 rounded-md bg-primary px-3 text-sm font-semibold text-primary-foreground"
+                  : "h-9 min-w-10 rounded-md border border-input px-3 text-sm font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              }
+            >
+              {s}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 /* ---------- Product form ---------- */
 
@@ -51,11 +328,24 @@ function ProductForm({
     cost: initial ? String(initial.cost) : "",
     stock: String(initial?.stock ?? 0),
     lowStockAt: String(initial?.lowStockAt ?? 10),
-    sizes: (initial?.sizes ?? []).join(", "),
     active: initial?.active ?? true,
   });
+  const [sizes, setSizes] = useState<string[]>(initial?.sizes ?? []);
+  const [colors, setColors] = useState<ProductColor[]>(
+    () => initial?.colors ?? [{ name: "", hex: "#111111", images: [] }],
+  );
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<typeof v>) => setV((x) => ({ ...x, ...patch }));
+
+  // The size buttons follow the size scale of the chosen category
+  const scale = scaleOfCategory(categories.find((c) => c.id === v.categoryId));
+
+  const setColor = (i: number, c: ProductColor) =>
+    setColors((list) => list.map((x, k) => (k === i ? c : x)));
+  const addColor = () =>
+    setColors((list) => [...list, { name: "", hex: "#111111", images: [] }]);
+  const removeColor = (i: number) =>
+    setColors((list) => list.filter((_, k) => k !== i));
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -63,15 +353,14 @@ function ProductForm({
       name: v.name,
       sku: v.sku,
       categoryId: v.categoryId,
+      // An untouched empty colour row is ignored
+      colors: colors.filter((c) => c.name.trim() || c.images.length > 0),
       price: num(v.price),
       oldPrice: v.oldPrice.trim() ? num(v.oldPrice) : undefined,
       cost: v.cost.trim() ? num(v.cost) : 0,
       stock: initial ? initial.stock : num(v.stock),
       lowStockAt: num(v.lowStockAt),
-      sizes: v.sizes
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
+      sizes: sortSizes(sizes),
       active: v.active,
     });
     if (err) setError(err);
@@ -95,7 +384,14 @@ function ProductForm({
           <select
             id="p-cat"
             value={v.categoryId}
-            onChange={(e) => set({ categoryId: e.target.value })}
+            onChange={(e) => {
+              const next = scaleOfCategory(
+                categories.find((c) => c.id === e.target.value),
+              );
+              set({ categoryId: e.target.value });
+              // Sizes that do not exist in the new scale are dropped
+              setSizes((s) => s.filter((x) => next.sizes.includes(x)));
+            }}
             className={inputCls}
           >
             {categories.map((c) => (
@@ -173,15 +469,32 @@ function ProductForm({
         </Field>
       </div>
 
-      <Field label="Tailles" htmlFor="p-sizes" hint="Séparées par des virgules">
-        <input
-          id="p-sizes"
-          value={v.sizes}
-          onChange={(e) => set({ sizes: e.target.value })}
-          placeholder="S, M, L, XL"
-          className={inputCls}
-        />
-      </Field>
+      <SizePicker scale={scale} value={sizes} onChange={setSizes} />
+
+      <div className="space-y-2">
+        <div>
+          <p className="text-xs font-medium">Couleurs et photos</p>
+          <p className="text-xs text-muted-foreground">
+            Chaque couleur a ses propres photos (jusqu&apos;à {MAX_PER_COLOR}).
+            La première est la couverture.
+          </p>
+        </div>
+
+        {colors.map((c, i) => (
+          <ColorBlock
+            key={i}
+            index={i}
+            color={c}
+            onChange={(next) => setColor(i, next)}
+            onRemove={() => removeColor(i)}
+          />
+        ))}
+
+        <Button type="button" variant="outline" size="lg" onClick={addColor}>
+          <Plus className="size-4" aria-hidden />
+          Ajouter une couleur
+        </Button>
+      </div>
 
       <label className="flex cursor-pointer items-center gap-2.5 text-sm">
         <input
@@ -268,6 +581,133 @@ function StockForm({
       {error && <Alert>{error}</Alert>}
       <FormActions submitLabel="Ajuster le stock" onCancel={onClose} />
     </form>
+  );
+}
+
+/* ---------- Product card (grid) ---------- */
+
+function ProductCard({
+  product: p,
+  categoryName,
+  onStock,
+  onEdit,
+  onRemove,
+}: {
+  product: StockProduct;
+  categoryName: string;
+  onStock: () => void;
+  onEdit: () => void;
+  onRemove: () => void;
+}) {
+  const out = p.stock === 0;
+  const low = !out && p.stock <= p.lowStockAt;
+  const cover = p.colors[0]?.images[0];
+  const photos = p.colors.reduce((s, c) => s + c.images.length, 0);
+
+  return (
+    <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+      <div className="relative">
+        <ImagePlaceholder
+          src={cover?.src}
+          alt={cover?.alt ?? p.name}
+          ratio="4 / 5"
+          label="Sans image"
+          kind="product"
+          tone="dark"
+          rounded={false}
+          sizes="(min-width:1536px) 20vw, (min-width:1024px) 25vw, 50vw"
+        />
+        {(!p.active || out || low) && (
+          <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+            {!p.active && (
+              <span className="rounded-full bg-background">
+                <Badge tone="neutral">Inactif</Badge>
+              </span>
+            )}
+            {out && (
+              <span className="rounded-full bg-background">
+                <Badge tone="danger">Rupture</Badge>
+              </span>
+            )}
+            {low && (
+              <span className="rounded-full bg-background">
+                <Badge tone="warning">Stock bas</Badge>
+              </span>
+            )}
+          </div>
+        )}
+        {photos > 0 && (
+          <span className="absolute bottom-2 right-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium tabular-nums text-white">
+            {photos} photo{photos > 1 ? "s" : ""}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-1 flex-col p-3">
+        <p className="truncate font-mono text-[11px] text-muted-foreground">
+          {p.sku} · {categoryName}
+        </p>
+        <h3 className="mt-1 text-sm font-semibold leading-snug">{p.name}</h3>
+
+        {p.colors.length > 0 && (
+          <ul aria-label="Couleurs" className="mt-2 flex flex-wrap gap-1.5">
+            {p.colors.map((c) => (
+              <li key={c.name} title={c.name}>
+                <span
+                  className="block size-3.5 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.5)]"
+                  style={{ backgroundColor: c.hex }}
+                />
+                <span className="sr-only">{c.name}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 text-sm tabular-nums">
+          <span className="font-semibold">{formatMAD(p.price)}</span>
+          {p.oldPrice && (
+            <span className="text-xs text-muted-foreground line-through">
+              {formatMAD(p.oldPrice)}
+            </span>
+          )}
+        </p>
+        {p.sizes.length > 0 && (
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {sortSizes(p.sizes).join(" · ")}
+          </p>
+        )}
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Stock :{" "}
+          <span className="font-semibold tabular-nums text-foreground">
+            {p.stock}
+          </span>
+        </p>
+
+        <div className="mt-auto flex items-center justify-between gap-1 pt-3">
+          <Button variant="outline" size="sm" onClick={onStock}>
+            Stock
+          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Modifier ${p.name}`}
+              onClick={onEdit}
+            >
+              <Pencil aria-hidden />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Supprimer ${p.name}`}
+              onClick={onRemove}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -382,85 +822,20 @@ export default function ProductsPage() {
             text="Modifiez vos filtres ou ajoutez un produit."
           />
         ) : (
-          <div className={tableWrapCls}>
-            <table className={tableCls}>
-              <thead>
-                <tr>
-                  <th className={thCls}>Produit</th>
-                  <th className={thCls}>Catégorie</th>
-                  <th className={thCls}>Prix</th>
-                  <th className={thCls}>Stock</th>
-                  <th className={thCls}>Statut</th>
-                  <th className={`${thCls} text-right`}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((p) => (
-                  <tr key={p.id} className={trCls}>
-                    <td className={tdCls}>
-                      <p className="font-medium">{p.name}</p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {p.sku}
-                      </p>
-                    </td>
-                    <td className={`${tdCls} text-muted-foreground`}>
-                      {catName.get(p.categoryId) ?? "Sans catégorie"}
-                    </td>
-                    <td className={`${tdCls} tabular-nums`}>
-                      {formatMAD(p.price)}
-                      {p.oldPrice && (
-                        <span className="ml-2 text-xs text-muted-foreground line-through">
-                          {formatMAD(p.oldPrice)}
-                        </span>
-                      )}
-                    </td>
-                    <td className={tdCls}>
-                      <span className="mr-2 tabular-nums">{p.stock}</span>
-                      {p.stock === 0 ? (
-                        <Badge tone="danger">Rupture</Badge>
-                      ) : p.stock <= p.lowStockAt ? (
-                        <Badge tone="warning">Bas</Badge>
-                      ) : null}
-                    </td>
-                    <td className={tdCls}>
-                      <Badge tone={p.active ? "success" : "neutral"}>
-                        {p.active ? "Actif" : "Inactif"}
-                      </Badge>
-                    </td>
-                    <td className={`${tdCls} text-right`}>
-                      <div className="inline-flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setStockFor(p)}
-                        >
-                          Stock
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label={`Modifier ${p.name}`}
-                          onClick={() => setEditing(p)}
-                        >
-                          <Pencil aria-hidden />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Supprimer ${p.name}`}
-                            onClick={() => {
-                              setRemoveError(null);
-                              setRemoving(p);
-                            }}
-                          >
-                            <Trash2 aria-hidden />
-                          </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 lg:gap-4 2xl:grid-cols-4">
+            {list.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                categoryName={catName.get(p.categoryId) ?? "Sans catégorie"}
+                onStock={() => setStockFor(p)}
+                onEdit={() => setEditing(p)}
+                onRemove={() => {
+                  setRemoveError(null);
+                  setRemoving(p);
+                }}
+              />
+            ))}
           </div>
         )}
       </div>

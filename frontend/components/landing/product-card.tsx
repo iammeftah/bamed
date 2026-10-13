@@ -1,38 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { motion } from "motion/react";
-import { Heart, ShoppingBag } from "lucide-react";
+import Link from "next/link";
 import { ProductMedia } from "@/components/shop/product-media";
 import { colorImages, formatNumber, type Product } from "@/lib/products";
 
 export function ProductCard({ product }: { product: Product }) {
-  const [liked, setLiked] = useState(false);
   const [hovering, setHovering] = useState(false);
   const images = colorImages(product);
+  const href = `/boutique/${encodeURIComponent(product.id)}`;
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
   return (
     <article
-      className="product-card flex flex-col"
+      className="product-card relative flex flex-col"
       onPointerEnter={(e) => {
         if (e.pointerType === "mouse") setHovering(true);
       }}
       onPointerLeave={() => setHovering(false)}
     >
       <div className="relative isolate overflow-hidden rounded-xl bg-muted">
-        <a href="#" tabIndex={-1} aria-hidden="true" className="block">
-          <div className="zoom-img">
-            <ProductMedia
-              images={images}
-              name={product.name}
-              active={hovering}
-              sizes="(min-width:1024px) 25vw, 50vw"
-            />
-          </div>
-        </a>
+        <div className="zoom-img">
+          <ProductMedia
+            images={images}
+            name={product.name}
+            active={hovering}
+            sizes="(min-width:1024px) 25vw, 50vw"
+          />
+        </div>
 
         {product.tag && (
           <span
@@ -45,48 +42,20 @@ export function ProductCard({ product }: { product: Product }) {
             {product.tag}
           </span>
         )}
-
-        <motion.button
-          type="button"
-          whileTap={{ scale: 0.85 }}
-          onClick={() => setLiked((v) => !v)}
-          aria-pressed={liked}
-          aria-label={
-            liked
-              ? `Retirer ${product.name} des favoris`
-              : `Ajouter ${product.name} aux favoris`
-          }
-          className="card-fade absolute right-2 top-2 flex size-10 items-center justify-center rounded-full bg-white text-neutral-950 sm:right-3 sm:top-3"
-        >
-          <Heart
-            className={liked ? "size-5 fill-neutral-950" : "size-5"}
-            aria-hidden
-          />
-        </motion.button>
-
-        <div className="card-reveal absolute inset-x-2 bottom-2 sm:inset-x-3 sm:bottom-3">
-          <motion.button
-            type="button"
-            whileTap={{ scale: 0.97 }}
-            aria-label={`Ajout rapide : ${product.name}`}
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-full bg-neutral-950 text-sm font-semibold text-white"
-          >
-            <ShoppingBag className="size-4" aria-hidden />
-            Ajout rapide
-          </motion.button>
-        </div>
       </div>
 
       <div className="mt-3 flex flex-col gap-1">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           {product.category}
         </p>
-        <a
-          href="#"
-          className="text-base font-semibold leading-snug tracking-tight text-foreground underline-offset-4 hover:underline md:text-lg"
-        >
-          {product.name}
-        </a>
+        <h3 className="text-base font-semibold leading-snug tracking-tight md:text-lg">
+          <Link
+            href={href}
+            className="underline-offset-4 after:absolute after:inset-0 after:content-[''] hover:underline"
+          >
+            {product.name}
+          </Link>
+        </h3>
 
         <p className="mt-1 flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
           <span

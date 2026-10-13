@@ -6,6 +6,7 @@ import { ColorPicker, ColorProvider } from "@/components/shop/product-color";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import { formatNumber, type Product } from "@/lib/products";
+import { sizeScales, sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 import { productsService } from "@/services/products.service";
 
@@ -54,6 +55,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
     ? Math.round((1 - product.price / product.oldPrice) * 100)
     : 0;
 
+  const scale = sizeScales[product.sizeScale];
+
   return (
     <main className="overflow-x-clip bg-background">
       <section className="pb-16 pt-28 md:pb-24 md:pt-36">
@@ -61,7 +64,10 @@ export default async function ProductPage({ params, searchParams }: Props) {
           <nav aria-label="Fil d'Ariane" className="mb-6 md:mb-8">
             <ol className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               <li>
-                <Link href="/boutique" className="hover:text-foreground hover:underline">
+                <Link
+                  href="/boutique"
+                  className="hover:text-foreground hover:underline"
+                >
                   Boutique
                 </Link>
               </li>
@@ -70,7 +76,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
               </li>
               <li>
                 <Link
-                  href={`/boutique?categorie=${product.type}`}
+                  href={`/boutique?categorie=${encodeURIComponent(product.type)}`}
                   className="hover:text-foreground hover:underline"
                 >
                   {product.category}
@@ -147,10 +153,15 @@ export default async function ProductPage({ params, searchParams }: Props) {
 
                   {product.sizes.length > 0 && (
                     <div className="grid grid-cols-[7rem_1fr] gap-4 py-5">
-                      <dt className="text-sm font-semibold">Tailles</dt>
+                      <dt className="text-sm font-semibold">
+                        {scale.title}
+                        <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                          {scale.short}
+                        </span>
+                      </dt>
                       <dd>
                         <ul className="flex flex-wrap gap-2">
-                          {product.sizes.map((s) => (
+                          {sortSizes(product.sizes).map((s) => (
                             <li
                               key={s}
                               className="inline-flex h-10 min-w-11 items-center justify-center rounded-md bg-muted px-3 text-sm font-semibold"
@@ -159,6 +170,9 @@ export default async function ProductPage({ params, searchParams }: Props) {
                             </li>
                           ))}
                         </ul>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {scale.hint}
+                        </p>
                       </dd>
                     </div>
                   )}
@@ -178,7 +192,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                     Retour à la boutique
                   </Link>
                   <Link
-                    href={`/boutique?categorie=${product.type}`}
+                    href={`/boutique?categorie=${encodeURIComponent(product.type)}`}
                     className="inline-flex h-11 items-center rounded-md bg-muted px-5 text-sm font-semibold transition-colors hover:bg-foreground/10"
                   >
                     Voir tous les articles de cette catégorie

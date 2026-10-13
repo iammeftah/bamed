@@ -1,8 +1,13 @@
+import type { ProductColor } from "@/lib/products";
+import type { SizeScaleId } from "@/lib/sizes";
+
 export type Category = {
   id: string;
   name: string;
   slug: string;
   description: string;
+  /** Which sizes products of this category offer */
+  sizeScale: SizeScaleId;
   createdAt: number;
 };
 
@@ -11,6 +16,8 @@ export type StockProduct = {
   sku: string;
   name: string;
   categoryId: string;
+  /** Same shape as the storefront: each colour owns its photos (first = cover). */
+  colors: ProductColor[];
   price: number;
   oldPrice?: number;
   /** Purchase cost, used to estimate profit */
@@ -18,11 +25,11 @@ export type StockProduct = {
   stock: number;
   /** Stock at or under this value raises a low stock alert */
   lowStockAt: number;
+  /** Sizes come from the size scale of the category */
   sizes: string[];
   active: boolean;
   createdAt: number;
 };
-
 
 export type AdminUser = {
   id: string;

@@ -10,14 +10,7 @@ import {
   useMotionValueEvent,
   useScroll,
 } from "motion/react";
-import {
-  ArrowUpRight,
-  Heart,
-  Menu,
-  Search,
-  ShoppingBag,
-  X,
-} from "lucide-react";
+import { ArrowUpRight, Menu, Search, X } from "lucide-react";
 import { ThemeToggle } from "@/components/landing/theme-toggle";
 import { cn } from "@/lib/utils";
 
@@ -135,17 +128,7 @@ export function SiteHeader() {
               >
                 <Search className={icon} aria-hidden />
               </Link>
-              <button
-                type="button"
-                aria-label="Mes favoris"
-                className={cn(iconBtn, "hidden lg:flex")}
-              >
-                <Heart className={icon} aria-hidden />
-              </button>
               <ThemeToggle />
-              <button type="button" aria-label="Mon panier" className={iconBtn}>
-                <ShoppingBag className={icon} aria-hidden />
-              </button>
               <button
                 type="button"
                 onClick={() => setOpen((v) => !v)}

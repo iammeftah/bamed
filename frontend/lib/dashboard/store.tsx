@@ -13,7 +13,13 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { seedData } from "@/lib/dashboard/seed";
 import { slugify } from "@/lib/dashboard/format";
-import { formatMAD } from "@/lib/products";
+import {
+  formatMAD,
+  products as sampleProducts,
+  sampleCategories,
+  type ProductColor,
+} from "@/lib/products";
+import { defaultScale, isScaleId, type SizeScaleId } from "@/lib/sizes";
 import type {
   AdminUser,
   DashboardData,
@@ -34,9 +40,17 @@ import type {
 const KEY = "bamed.dashboard.v1";
 const NOT_READY = "Données non chargées.";
 
+/** Demo mode only: photos are data URLs kept in localStorage, so keep them small. */
+const MAX_IMAGE_CHARS = 1_200_000;
+
 type Result = string | null; // null = success, string = error message
 
-export type CategoryInput = { id?: string; name: string; description: string };
+export type CategoryInput = {
+  id?: string;
+  name: string;
+  description: string;
+  sizeScale: SizeScaleId;
+};
 export type StockProductInput = Omit<StockProduct, "id" | "createdAt"> & {
   id?: string;
 };
@@ -85,6 +99,51 @@ const empty: DashboardData = {
   logs: [],
 };
 
+/** Products saved before colours existed (they had a single "image"). */
+type LegacyProduct = StockProduct & { image?: string };
+
+/** Gives old saved products a "colors" list so every product has the same shape. */
+function withColors(d: DashboardData): DashboardData {
+  return {
+    ...d,
+    products: d.products.map((p) => {
+      if (Array.isArray(p.colors)) return p;
+      const { image, ...rest } = p as LegacyProduct;
+      const sample = sampleProducts.find((s) => s.id === p.id);
+      let colors: ProductColor[] = [];
+      if (image?.startsWith("data:")) {
+        colors = [
+          {
+            name: "Défaut",
+            hex: "#8a8a8a",
+            images: [{ src: image, alt: p.name }],
+          },
+        ];
+      } else if (sample) {
+        colors = sample.colors;
+      }
+      return { ...rest, colors };
+    }),
+  };
+}
+
+/** Categories saved before size scales existed get one (the sample one, or letters). */
+function withScales(d: DashboardData): DashboardData {
+  return {
+    ...d,
+    categories: d.categories.map((c) =>
+      isScaleId(c.sizeScale)
+        ? c
+        : {
+            ...c,
+            sizeScale:
+              sampleCategories.find((s) => s.id === c.id)?.sizeScale ??
+              defaultScale,
+          },
+    ),
+  };
+}
+
 function uid() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -99,8 +158,8 @@ function nextSku(products: StockProduct[]) {
   return `BAM-${max + 1}`;
 }
 
-   const activeAdmins = (list: AdminUser[]) =>
-     list.filter((a) => a.active).length;
+const activeAdmins = (list: AdminUser[]) =>
+  list.filter((a) => a.active).length;
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -133,6 +192,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       }
       if (!loaded || !Array.isArray(loaded.sales)) {
         loaded = seedData(Date.now());
+      } else {
+        loaded = withColors(withScales(loaded));
       }
       if (!cancelled) {
         setNow(Date.now());
@@ -173,7 +234,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-
   const actions = useMemo<Actions>(() => {
     const saveCategory: Actions["saveCategory"] = (i) => {
       const d = dataRef.current;
@@ -184,6 +244,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       if (!slug) return "Le nom est invalide.";
       if (d.categories.some((c) => c.slug === slug && c.id !== i.id))
         return "Une catégorie porte déjà ce nom.";
+      if (!isScaleId(i.sizeScale)) return "Choisissez une échelle de tailles.";
       const description = i.description.trim();
       if (i.id) {
         if (!d.categories.some((c) => c.id === i.id))
@@ -192,7 +253,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           (dd) => ({
             ...dd,
             categories: dd.categories.map((c) =>
-              c.id === i.id ? { ...c, name, slug, description } : c,
+              c.id === i.id
+                ? { ...c, name, slug, description, sizeScale: i.sizeScale }
+                : c,
             ),
           }),
           {
@@ -210,7 +273,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             ...dd,
             categories: [
               ...dd.categories,
-              { id, name, slug, description, createdAt },
+              {
+                id,
+                name,
+                slug,
+                description,
+                sizeScale: i.sizeScale,
+                createdAt,
+              },
             ],
           }),
           {
@@ -264,6 +334,36 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         return "Le stock doit être un entier positif.";
       if (!Number.isInteger(i.lowStockAt) || i.lowStockAt < 0)
         return "Le seuil d'alerte est invalide.";
+
+      // Colours: a name is required, names are unique, each colour keeps its photos
+      const seen = new Set<string>();
+      const colors: ProductColor[] = [];
+      for (const c of i.colors) {
+        const colorName = c.name.trim();
+        if (!colorName) return "Donnez un nom à chaque couleur.";
+        const key = colorName.toLowerCase();
+        if (seen.has(key)) return `La couleur « ${colorName} » existe déjà.`;
+        seen.add(key);
+        if (!/^#[0-9a-f]{6}$/i.test(c.hex))
+          return `La teinte de « ${colorName} » est invalide.`;
+        colors.push({
+          name: colorName,
+          hex: c.hex.toLowerCase(),
+          images: c.images
+            .filter((img) => img.src)
+            .map((img, n) => ({
+              src: img.src,
+              alt: `${name}, ${colorName.toLowerCase()}, photo ${n + 1}`,
+            })),
+        });
+      }
+      const weight = colors.reduce(
+        (s, c) => s + c.images.reduce((t, img) => t + img.src.length, 0),
+        0,
+      );
+      if (weight > MAX_IMAGE_CHARS)
+        return "Les photos sont trop lourdes pour le mode démo. Retirez-en quelques-unes.";
+
       const sku = i.sku.trim().toUpperCase() || nextSku(d.products);
       if (d.products.some((p) => p.sku === sku && p.id !== i.id))
         return "Ce SKU existe déjà.";
@@ -272,6 +372,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         name,
         sku,
         categoryId: i.categoryId,
+        colors,
         price: i.price,
         oldPrice: i.oldPrice,
         cost: i.cost,
@@ -494,17 +595,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
   }, [mutate]);
 
-
-     const value = useMemo<Ctx>(
-     () => ({
-       ...(data ?? empty),
-       ...actions,
-       ready: data !== null,
-       now,
-       actorId: user?.id ?? null,
-     }),
-     [data, actions, now, user?.id],
-   );
+  const value = useMemo<Ctx>(
+    () => ({
+      ...(data ?? empty),
+      ...actions,
+      ready: data !== null,
+      now,
+      actorId: user?.id ?? null,
+    }),
+    [data, actions, now, user?.id],
+  );
 
   return <DashboardCtx.Provider value={value}>{children}</DashboardCtx.Provider>;
 }

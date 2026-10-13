@@ -5,6 +5,7 @@ import { MotionProvider } from "@/components/landing/motion-provider";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
+import { productsService } from "@/services/products.service";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -31,9 +32,27 @@ export const metadata: Metadata = {
     "BAMED : la mode homme premium du quotidien, des coupes nettes pensées pour bouger avec vous.",
 };
 
-export default function RootLayout({
+/** Categories that have products, for the footer links. */
+async function getFooterCategories(): Promise<{ id: string; label: string }[]> {
+  try {
+    const [categories, products] = await Promise.all([
+      productsService.getCategories(),
+      productsService.getProducts({ size: 100 }),
+    ]);
+    const used = new Set(products.map((p) => p.type));
+    return categories
+      .filter((c) => used.has(c.id))
+      .map((c) => ({ id: c.id, label: c.label }));
+  } catch {
+    return [];
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const footerCategories = await getFooterCategories();
+
   return (
     <html
       lang="fr"
@@ -54,7 +73,7 @@ export default function RootLayout({
             <AuthProvider>
               <SiteHeader />
               {children}
-              <SiteFooter />
+              <SiteFooter categories={footerCategories} />
             </AuthProvider>
           </MotionProvider>
         </ThemeProvider>
