@@ -330,17 +330,20 @@ export function Modal({
 export function FormActions({
   submitLabel,
   onCancel,
+  pending = false,
 }: {
   submitLabel: string;
   onCancel: () => void;
+  /** True while the request is running: disables the submit button */
+  pending?: boolean;
 }) {
   return (
     <div className="mt-6 flex justify-end gap-2">
       <Button type="button" variant="outline" size="lg" onClick={onCancel}>
         Annuler
       </Button>
-      <Button type="submit" size="lg">
-        {submitLabel}
+      <Button type="submit" size="lg" disabled={pending}>
+        {pending ? "Envoi..." : submitLabel}
       </Button>
     </div>
   );
@@ -360,7 +363,7 @@ export function ConfirmDialog({
   message: string;
   confirmLabel?: string;
   error?: string | null;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onClose: () => void;
 }) {
   return (

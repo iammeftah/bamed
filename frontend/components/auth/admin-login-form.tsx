@@ -2,7 +2,6 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -13,6 +12,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api/client";
+import { ADMIN_HOME } from "@/lib/auth/redirect";
 import { mocksEnabled } from "@/lib/config";
 
 const inputClass =
@@ -21,7 +21,6 @@ const inputClass =
 const labelClass = "block text-xs font-medium";
 
 export function AdminLoginForm({ next }: { next: string }) {
-  const router = useRouter();
   const { status, login } = useAuth();
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
@@ -31,10 +30,14 @@ export function AdminLoginForm({ next }: { next: string }) {
 
   const showDemo = mocksEnabled && process.env.NODE_ENV !== "production";
 
-  // Already signed in, or just signed in: go to the dashboard
+  // Signed in (already, or just now): go to the dashboard.
+  // A full page load is used on purpose: the server then sees the new cookie,
+  // and the client session state restarts from the real server answer.
   useEffect(() => {
-    if (status === "authenticated") router.replace(next);
-  }, [status, next, router]);
+    if (status === "authenticated") {
+      window.location.assign(next || ADMIN_HOME);
+    }
+  }, [status, next]);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,6 +46,7 @@ export function AdminLoginForm({ next }: { next: string }) {
     setPending(true);
     try {
       await login({ phone, password });
+      // Success: the effect above redirects. The button stays busy until then.
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         setError("Numéro ou mot de passe incorrect.");
@@ -52,7 +56,6 @@ export function AdminLoginForm({ next }: { next: string }) {
         // Never show raw server messages to the visitor
         setError("Connexion impossible. Réessayez dans un instant.");
       }
-    } finally {
       setPending(false);
     }
   }

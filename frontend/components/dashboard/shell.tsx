@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { ADMIN_HOME } from "@/lib/auth/redirect";
+import { useDashboard } from "@/lib/dashboard/store";
 import { cn } from "@/lib/utils";
 import type { Role } from "@/types/auth";
 
@@ -168,6 +169,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 export function DashboardShell({ children }: { children: ReactNode }) {
+  const d = useDashboard();
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
@@ -226,6 +228,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
       <main className="lg:pl-60">
         <div className="mx-auto w-full max-w-[1280px] px-5 py-8 md:px-8">
+          {d.loadError && (
+            <div
+              role="alert"
+              className="mb-6 flex items-center justify-between gap-3 rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive"
+            >
+              {d.loadError}
+              <button
+                type="button"
+                onClick={d.reload}
+                className="font-semibold underline underline-offset-4"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
           {children}
         </div>
       </main>

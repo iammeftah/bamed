@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { normalizePhone } from "@/lib/auth/phone";
+import { mocksEnabled } from "@/lib/config";
 import { seedData } from "@/lib/dashboard/seed";
 import { slugify } from "@/lib/dashboard/format";
 import {
@@ -21,6 +22,7 @@ import {
   type ProductColor,
 } from "@/lib/products";
 import { defaultScale, isScaleId, type SizeScaleId } from "@/lib/sizes";
+import { adminService, errorMessage } from "@/services/admin.service";
 import type {
   AdminUser,
   DashboardData,
@@ -30,11 +32,12 @@ import type {
 } from "@/types/dashboard";
 
 /**
- * SINGLE SWAP POINT FOR THE BACKEND.
- * Today every action edits local state (saved in localStorage) and writes a log entry.
- * Later, each action becomes an API call. The backend must also:
- *  - check the role on every request (the checks here only hide buttons),
- *  - write the log entry itself, with the actor taken from the token.
+ * Two modes:
+ *  - Demo (mocksEnabled): every action edits local state saved in localStorage
+ *    and writes a log entry.
+ *  - Backend: every action calls the Laravel API through /api/admin/*, then
+ *    reloads the data. The backend validates, enforces roles and writes the
+ *    log entry itself (actor taken from the token).
  */
 
 // v2: admins now use a phone (no email) and sales have no channel
@@ -45,6 +48,9 @@ const NOT_READY = "Données non chargées.";
 const MAX_IMAGE_CHARS = 1_200_000;
 
 type Result = string | null; // null = success, string = error message
+
+/** Actions may be synchronous (demo) or asynchronous (backend). */
+export type ActionResult = Result | Promise<Result>;
 
 export type CategoryInput = {
   id?: string;
@@ -70,14 +76,14 @@ export type SaleInput = {
 type LogInput = Pick<LogEntry, "action" | "entity" | "entityId" | "summary">;
 
 type Actions = {
-  saveCategory: (i: CategoryInput) => Result;
-  deleteCategory: (id: string) => Result;
-  saveProduct: (i: StockProductInput) => Result;
-  deleteProduct: (id: string) => Result;
-  adjustStock: (id: string, delta: number, reason: string) => Result;
-  saveAdmin: (i: AdminInput) => Result;
-  deleteAdmin: (id: string) => Result;
-  recordSale: (i: SaleInput) => Result;
+  saveCategory: (i: CategoryInput) => ActionResult;
+  deleteCategory: (id: string) => ActionResult;
+  saveProduct: (i: StockProductInput) => ActionResult;
+  deleteProduct: (id: string) => ActionResult;
+  adjustStock: (id: string, delta: number, reason: string) => ActionResult;
+  saveAdmin: (i: AdminInput) => ActionResult;
+  deleteAdmin: (id: string) => ActionResult;
+  recordSale: (i: SaleInput) => ActionResult;
   resetDemo: () => void;
 };
 
@@ -87,6 +93,9 @@ type Ctx = DashboardData &
     /** Time the data was loaded (kept in state so renders stay pure) */
     now: number;
     actorId: string | null;
+    /** Message shown when the backend data could not be loaded */
+    loadError: string | null;
+    reload: () => void;
   };
 
 const DashboardCtx = createContext<Ctx | null>(null);
@@ -165,6 +174,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [data, setData] = useState<DashboardData | null>(null);
   const [now, setNow] = useState(0);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const dataRef = useRef<DashboardData | null>(null);
   const actor = useRef({ id: "system", name: "Système" });
@@ -179,10 +189,36 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       : { id: "system", name: "Système" };
   }, [user]);
 
-  // Load once: saved data, or demo data
+  /** Backend mode: fetch everything again. */
+  const refresh = useCallback(async () => {
+    const fresh = await adminService.loadAll();
+    setNow(Date.now());
+    setData(fresh);
+  }, []);
+
+  /** Called by the "Réessayer" button after a failed load. */
+  const reload = useCallback(() => {
+    setLoadError(null);
+    refresh().catch((e) => setLoadError(errorMessage(e)));
+  }, [refresh]);
+
+  // Load once: from the backend, or saved/demo data
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      if (!mocksEnabled) {
+        try {
+          const fresh = await adminService.loadAll();
+          if (!cancelled) {
+            setNow(Date.now());
+            setData(fresh);
+          }
+        } catch (e) {
+          if (!cancelled) setLoadError(errorMessage(e));
+        }
+        return;
+      }
+
       let loaded: DashboardData | null = null;
       try {
         const raw = window.localStorage.getItem(KEY);
@@ -206,9 +242,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Save on every change
+  // Demo mode only: save on every change
   useEffect(() => {
-    if (!data) return;
+    if (!data || !mocksEnabled) return;
     try {
       window.localStorage.setItem(KEY, JSON.stringify(data));
     } catch {
@@ -235,7 +271,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   );
 
   const actions = useMemo<Actions>(() => {
-    const saveCategory: Actions["saveCategory"] = (i) => {
+    const saveCategory = (i: CategoryInput): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const name = i.name.trim();
@@ -294,7 +330,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const deleteCategory: Actions["deleteCategory"] = (id) => {
+    const deleteCategory = (id: string): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const cat = d.categories.find((c) => c.id === id);
@@ -317,7 +353,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const saveProduct: Actions["saveProduct"] = (i) => {
+    const saveProduct = (i: StockProductInput): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const name = i.name.trim();
@@ -421,7 +457,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const deleteProduct: Actions["deleteProduct"] = (id) => {
+    const deleteProduct = (id: string): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const p = d.products.find((x) => x.id === id);
@@ -438,7 +474,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const adjustStock: Actions["adjustStock"] = (id, delta, reason) => {
+    const adjustStock = (id: string, delta: number, reason: string): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const p = d.products.find((x) => x.id === id);
@@ -464,7 +500,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const saveAdmin: Actions["saveAdmin"] = (i) => {
+    const saveAdmin = (i: AdminInput): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const name = i.name.trim();
@@ -512,7 +548,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const deleteAdmin: Actions["deleteAdmin"] = (id) => {
+    const deleteAdmin = (id: string): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const a = d.admins.find((x) => x.id === id);
@@ -533,7 +569,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
-    const recordSale: Actions["recordSale"] = (i) => {
+    const recordSale = (i: SaleInput): Result => {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const p = d.products.find((x) => x.id === i.productId);
@@ -575,6 +611,36 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       return null;
     };
 
+    // Backend mode: call the API, then reload everything
+    if (!mocksEnabled) {
+      const run = async (fn: () => Promise<unknown>): Promise<Result> => {
+        try {
+          await fn();
+        } catch (e) {
+          return errorMessage(e);
+        }
+        try {
+          // the backend wrote the log entry, so reload all lists
+          await refresh();
+        } catch {
+          /* saved; the lists update on the next load */
+        }
+        return null;
+      };
+      return {
+        saveCategory: (i) => run(() => adminService.saveCategory(i)),
+        deleteCategory: (id) => run(() => adminService.deleteCategory(id)),
+        saveProduct: (i) => run(() => adminService.saveProduct(i)),
+        deleteProduct: (id) => run(() => adminService.deleteProduct(id)),
+        adjustStock: (id, delta, reason) =>
+          run(() => adminService.adjustStock(id, delta, reason)),
+        saveAdmin: (i) => run(() => adminService.saveAdmin(i)),
+        deleteAdmin: (id) => run(() => adminService.deleteAdmin(id)),
+        recordSale: (i) => run(() => adminService.recordSale(i)),
+        resetDemo: () => {},
+      };
+    }
+
     const resetDemo = () => {
       setNow(Date.now());
       setData(seedData(Date.now()));
@@ -591,7 +657,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       recordSale,
       resetDemo,
     };
-  }, [mutate]);
+  }, [mutate, refresh]);
 
   const value = useMemo<Ctx>(
     () => ({
@@ -600,8 +666,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       ready: data !== null,
       now,
       actorId: user?.id ?? null,
+      loadError,
+      reload,
     }),
-    [data, actions, now, user?.id],
+    [data, actions, now, user?.id, loadError, reload],
   );
 
   return <DashboardCtx.Provider value={value}>{children}</DashboardCtx.Provider>;

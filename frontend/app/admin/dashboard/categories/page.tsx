@@ -19,7 +19,7 @@ import {
   thCls,
   trCls,
 } from "@/components/dashboard/ui";
-import { useDashboard } from "@/lib/dashboard/store";
+import { useDashboard, type ActionResult } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
 import {
   defaultScale,
@@ -40,7 +40,7 @@ function CategoryForm({
     name: string,
     description: string,
     sizeScale: SizeScaleId,
-  ) => string | null;
+  ) => ActionResult;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
@@ -49,10 +49,15 @@ function CategoryForm({
     initial ? scaleOfCategory(initial).id : defaultScale,
   );
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave(name, description, sizeScale);
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const err = await onSave(name, description, sizeScale);
+    setPending(false);
     if (err) setError(err);
     else onClose();
   }
@@ -108,6 +113,7 @@ function CategoryForm({
       </ul>
       {error && <Alert>{error}</Alert>}
       <FormActions
+        pending={pending}
         submitLabel={initial ? "Enregistrer" : "Créer la catégorie"}
         onCancel={onClose}
       />
@@ -258,9 +264,9 @@ export default function CategoriesPage() {
         }
         error={removeError}
         onClose={() => setRemoving(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!removing) return;
-          const err = d.deleteCategory(removing.id);
+          const err = await d.deleteCategory(removing.id);
           if (err) setRemoveError(err);
           else setRemoving(null);
         }}

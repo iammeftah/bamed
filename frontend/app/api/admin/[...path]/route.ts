@@ -1,6 +1,6 @@
 /**
- * Authenticated proxy: the page calls /api/admin/products, this adds the
- * Bearer token from the httpOnly cookie and forwards to Laravel.
+ * Authenticated proxy: the browser calls /api/admin/products, this adds the
+ * Bearer token from the httpOnly cookie and forwards to Laravel /admin/products.
  */
 import { NextResponse, type NextRequest } from "next/server";
 import {
@@ -18,7 +18,6 @@ const ROOTS = new Set([
   "sales",
   "logs",
   "uploads",
-  "admin",
 ]);
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_BODY = 12 * 1024 * 1024; // photos are 10 MB max
@@ -55,12 +54,15 @@ async function forward(request: NextRequest, ctx: Ctx) {
     if (buf.byteLength > 0) body = buf;
   }
 
-  const res = await backendFetch(`/${path.join("/")}${request.nextUrl.search}`, {
-    method: request.method,
-    token,
-    body,
-    contentType: request.headers.get("content-type") ?? undefined,
-  });
+  const res = await backendFetch(
+    `/admin/${path.join("/")}${request.nextUrl.search}`,
+    {
+      method: request.method,
+      token,
+      body,
+      contentType: request.headers.get("content-type") ?? undefined,
+    },
+  );
 
   if (res.status === 401) {
     await clearSessionToken();
@@ -84,4 +86,5 @@ async function forward(request: NextRequest, ctx: Ctx) {
 export const GET = forward;
 export const POST = forward;
 export const PUT = forward;
+export const PATCH = forward;
 export const DELETE = forward;
