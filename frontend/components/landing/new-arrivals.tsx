@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { ProductCard } from "@/components/landing/product-card";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
+import { ShopProductCard } from "@/components/shop/shop-product-card";
 import type { Product } from "@/lib/products";
 
 export function NewArrivals({ products }: { products: Product[] }) {
@@ -34,7 +34,7 @@ export function NewArrivals({ products }: { products: Product[] }) {
         <RevealGroup className="grid grid-cols-2 gap-x-3 gap-y-9 md:grid-cols-3 md:gap-x-4 lg:grid-cols-4 lg:gap-y-14">
           {products.map((p) => (
             <RevealItem key={p.id}>
-              <ProductCard product={p} />
+              <ShopProductCard product={p} showSizes={false} />
             </RevealItem>
           ))}
         </RevealGroup>

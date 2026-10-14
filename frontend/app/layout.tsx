@@ -63,12 +63,7 @@ export default async function RootLayout({
       <body
         className={`${manrope.variable} ${geistMono.variable} ${barlow.variable} font-sans antialiased`}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
+        <ThemeProvider>
           <MotionProvider>
             <AuthProvider>
               <SiteHeader />

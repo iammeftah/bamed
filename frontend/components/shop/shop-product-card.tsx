@@ -7,7 +7,15 @@ import { formatNumber, type Product } from "@/lib/products";
 import { sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 
-export function ShopProductCard({ product }: { product: Product }) {
+/** The one product card of the site (shop, product page, home page). */
+export function ShopProductCard({
+  product,
+  showSizes = true,
+}: {
+  product: Product;
+  /** Turn off on the home page to keep the card light */
+  showSizes?: boolean;
+}) {
   const [colorIndex, setColorIndex] = useState(0);
   const [hovering, setHovering] = useState(false);
 
@@ -121,7 +129,7 @@ export function ShopProductCard({ product }: { product: Product }) {
           )}
         </p>
 
-        {product.sizes.length > 0 && (
+        {showSizes && product.sizes.length > 0 && (
           <p className="text-xs text-muted-foreground">
             Tailles : {sortSizes(product.sizes).join(" · ")}
           </p>
