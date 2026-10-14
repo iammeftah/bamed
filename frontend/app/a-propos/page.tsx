@@ -21,11 +21,11 @@ const values = [
   },
   {
     title: "Une taille fidèle",
-    text: "Nos tailles correspondent à ce que vous attendez, pour limiter les retours.",
+    text: "Nos tailles correspondent à ce que vous attendez, pour choisir sans hésiter.",
   },
   {
-    title: "Un service humain",
-    text: "Une question sur une taille ou une commande ? Une vraie personne vous répond.",
+    title: "Un guide clair",
+    text: "Un guide des tailles et des réponses simples pour bien choisir votre pièce.",
   },
 ];
 
@@ -91,8 +91,9 @@ export default function AProposPage() {
                 porter dès le premier jour, et le rester longtemps.
               </p>
               <p>
-                Nous livrons partout au Maroc et facilitons les retours, pour
-                que l&apos;essayage à la maison reste sans stress.
+                Ce site est notre vitrine : retrouvez nos pièces, leurs couleurs
+                et leurs tailles, puis consultez le guide des tailles avant de
+                choisir.
               </p>
             </div>
           </Reveal>

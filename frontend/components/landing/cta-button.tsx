@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ export function CtaButton({
   className?: string;
 }) {
   return (
-    <a
+    <Link
       href={href}
       className={cn(
         "inline-flex h-10 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold whitespace-nowrap transition-colors active:scale-[0.98]",
@@ -33,6 +34,6 @@ export function CtaButton({
     >
       {children}
       {arrow && <ArrowRight className="size-4" aria-hidden />}
-    </a>
+    </Link>
   );
 }

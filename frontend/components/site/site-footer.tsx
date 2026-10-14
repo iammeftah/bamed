@@ -15,7 +15,7 @@ function buildColumns(categories: FooterCategory[]) {
       title: "Boutique",
       links: [
         { label: "Tout voir", href: "/boutique" },
-        { label: "Nouveautés", href: "/#nouveautes" },
+        { label: "Nouveautés", href: "/boutique?nouveau=1" },
         ...categories.slice(0, 6).map((c) => ({
           label: c.label,
           href: `/boutique?categorie=${encodeURIComponent(c.id)}`,
@@ -26,18 +26,8 @@ function buildColumns(categories: FooterCategory[]) {
       title: "Informations",
       links: [
         { label: "À propos", href: "/a-propos" },
-        { label: "Livraison", href: "#" },
-        { label: "Retours et échanges", href: "#" },
-        { label: "Guide des tailles", href: "#" },
-      ],
-    },
-    {
-      title: "Aide",
-      links: [
-        { label: "Contact", href: "#" },
-        { label: "Suivre ma commande", href: "#" },
-        { label: "Questions fréquentes", href: "#" },
-        { label: "Paiement sécurisé", href: "#" },
+        { label: "Guide des tailles", href: "/guide-des-tailles" },
+        { label: "Questions fréquentes", href: "/faq" },
       ],
     },
   ];
@@ -63,7 +53,7 @@ export function SiteFooter({
     <footer className="overflow-hidden bg-muted text-foreground">
       <div className="mx-auto w-full max-w-[1440px] px-5 pt-16 md:px-10 md:pt-24">
         <div className="grid gap-12 lg:grid-cols-12 lg:gap-8">
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-6">
             <Link
               href="/"
               aria-label="BAMED, accueil"
@@ -73,13 +63,13 @@ export function SiteFooter({
             </Link>
             <p className="mt-5 max-w-sm text-base leading-relaxed text-muted-foreground md:text-lg">
               La mode homme premium du quotidien. Des coupes nettes, des
-              matières honnêtes, livrées partout au Maroc.
+              matières honnêtes, à découvrir dans notre vitrine.
             </p>
           </div>
 
           <nav
             aria-label="Pied de page"
-            className="grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-3 lg:col-span-7"
+            className="grid grid-cols-2 gap-x-6 gap-y-10 lg:col-span-6"
           >
             {columns.map((col) => (
               <div key={col.title}>
@@ -122,12 +112,6 @@ export function SiteFooter({
           </a>
         </div>
       </div>
-      {/* <div
-        aria-hidden
-        className="pointer-events-none -mb-[0.14em] select-none text-center font-display text-[length:clamp(6rem,30vw,26rem)] font-bold leading-[0.8] text-foreground"
-      >
-        BAMED
-      </div> */}
     </footer>
   );
 }

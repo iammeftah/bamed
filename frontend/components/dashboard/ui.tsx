@@ -261,15 +261,19 @@ export function Field({
 
 /* ---------- Modal ---------- */
 
+const modalSizes = { md: "max-w-lg", xl: "max-w-4xl" } as const;
+
 export function Modal({
   open,
   title,
   onClose,
+  size = "md",
   children,
 }: {
   open: boolean;
   title: string;
   onClose: () => void;
+  size?: keyof typeof modalSizes;
   children: ReactNode;
 }) {
   const titleId = useId();
@@ -302,9 +306,9 @@ export function Modal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative flex max-h-[90dvh] w-full max-w-lg flex-col rounded-t-xl border border-border bg-popover sm:rounded-xl"
+        className={`relative flex max-h-[92dvh] w-full ${modalSizes[size]} flex-col rounded-t-xl border border-border bg-popover sm:rounded-xl`}
       >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
+        <div className="flex items-center justify-between border-b border-border px-5 py-3.5">
           <h2 id={titleId} className="text-base font-semibold tracking-tight">
             {title}
           </h2>

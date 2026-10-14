@@ -155,8 +155,14 @@ function SaleForm({
   );
 }
 
+/** Stops Excel and Sheets from running cell text as a formula (CSV injection). */
+function csvCell(v: string | number) {
+  let s = String(v);
+  if (typeof v === "string" && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 function exportCsv(sales: Sale[]) {
-  const esc = (v: string | number) => `"${String(v).replace(/"/g, '""')}"`;
   const rows = [
     ["Date", "Produit", "Quantité", "Prix unitaire", "Total", "Vendu par", "Canal"],
     ...sales.map((s) => [
@@ -169,7 +175,7 @@ function exportCsv(sales: Sale[]) {
       channelLabel[s.channel],
     ]),
   ];
-  const csv = "\uFEFF" + rows.map((r) => r.map(esc).join(";")).join("\n");
+  const csv = "\uFEFF" + rows.map((r) => r.map(csvCell).join(";")).join("\n");
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const a = document.createElement("a");
   a.href = url;
@@ -273,6 +279,7 @@ export default function SalesPage() {
           }}
           className={`${inputCls} w-auto`}
         >
+          {/* There s no online shopping , we only have shop transactions , remove the online shopping case, and do the analytics on only what we sold on the boutique */}
           <option value="all">Tous les canaux</option>
           <option value="boutique">Boutique</option>
           <option value="en-ligne">En ligne</option>

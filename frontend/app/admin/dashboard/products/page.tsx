@@ -169,7 +169,7 @@ function ColorBlock({
         </Button>
       </div>
 
-      <ul className="mt-3 grid grid-cols-4 gap-2">
+      <ul className="mt-3 grid grid-cols-6 gap-2">
         {images.map((img, n) => (
           <li key={n} className="relative overflow-hidden rounded-md">
             <ImagePlaceholder
@@ -334,18 +334,26 @@ function ProductForm({
   const [colors, setColors] = useState<ProductColor[]>(
     () => initial?.colors ?? [{ name: "", hex: "#111111", images: [] }],
   );
+  const [activeColor, setActiveColor] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const set = (patch: Partial<typeof v>) => setV((x) => ({ ...x, ...patch }));
 
   // The size buttons follow the size scale of the chosen category
   const scale = scaleOfCategory(categories.find((c) => c.id === v.categoryId));
 
+  // Only one colour is edited at a time (tabs), so the modal keeps a fixed height
+  const current = Math.min(activeColor, colors.length - 1);
+
   const setColor = (i: number, c: ProductColor) =>
     setColors((list) => list.map((x, k) => (k === i ? c : x)));
-  const addColor = () =>
+  const addColor = () => {
     setColors((list) => [...list, { name: "", hex: "#111111", images: [] }]);
-  const removeColor = (i: number) =>
+    setActiveColor(colors.length);
+  };
+  const removeColor = (i: number) => {
     setColors((list) => list.filter((_, k) => k !== i));
+    setActiveColor(i <= current ? Math.max(0, current - 1) : current);
+  };
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -368,149 +376,189 @@ function ProductForm({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <Field label="Nom" htmlFor="p-name">
-        <input
-          id="p-name"
-          required
-          value={v.name}
-          onChange={(e) => set({ name: e.target.value })}
-          className={inputCls}
-        />
-      </Field>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Catégorie" htmlFor="p-cat">
-          <select
-            id="p-cat"
-            value={v.categoryId}
-            onChange={(e) => {
-              const next = scaleOfCategory(
-                categories.find((c) => c.id === e.target.value),
-              );
-              set({ categoryId: e.target.value });
-              // Sizes that do not exist in the new scale are dropped
-              setSizes((s) => s.filter((x) => next.sizes.includes(x)));
-            }}
-            className={inputCls}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="SKU" htmlFor="p-sku" hint="Laissez vide pour générer">
+    <form onSubmit={submit} className="grid gap-x-8 gap-y-4 lg:grid-cols-2">
+      {/* Left column: product details */}
+      <div className="space-y-4">
+        <Field label="Nom" htmlFor="p-name">
           <input
-            id="p-sku"
-            value={v.sku}
-            onChange={(e) => set({ sku: e.target.value })}
-            placeholder="BAM-1009"
-            className={inputCls}
-          />
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Prix (MAD)" htmlFor="p-price">
-          <input
-            id="p-price"
+            id="p-name"
             required
-            inputMode="decimal"
-            value={v.price}
-            onChange={(e) => set({ price: e.target.value })}
+            value={v.name}
+            onChange={(e) => set({ name: e.target.value })}
             className={inputCls}
           />
         </Field>
-        <Field label="Ancien prix" htmlFor="p-old" hint="Pour une promo">
-          <input
-            id="p-old"
-            inputMode="decimal"
-            value={v.oldPrice}
-            onChange={(e) => set({ oldPrice: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Coût d'achat" htmlFor="p-cost">
-          <input
-            id="p-cost"
-            inputMode="decimal"
-            value={v.cost}
-            onChange={(e) => set({ cost: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Stock initial"
-          htmlFor="p-stock"
-          hint={initial ? "Modifiable via « Stock » dans la liste" : undefined}
-        >
-          <input
-            id="p-stock"
-            inputMode="numeric"
-            disabled={Boolean(initial)}
-            value={v.stock}
-            onChange={(e) => set({ stock: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Seuil d'alerte" htmlFor="p-low">
-          <input
-            id="p-low"
-            inputMode="numeric"
-            value={v.lowStockAt}
-            onChange={(e) => set({ lowStockAt: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-      </div>
-
-      <SizePicker scale={scale} value={sizes} onChange={setSizes} />
-
-      <div className="space-y-2">
-        <div>
-          <p className="text-xs font-medium">Couleurs et photos</p>
-          <p className="text-xs text-muted-foreground">
-            Chaque couleur a ses propres photos (jusqu&apos;à {MAX_PER_COLOR}).
-            La première est la couverture.
-          </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Catégorie" htmlFor="p-cat">
+            <select
+              id="p-cat"
+              value={v.categoryId}
+              onChange={(e) => {
+                const next = scaleOfCategory(
+                  categories.find((c) => c.id === e.target.value),
+                );
+                set({ categoryId: e.target.value });
+                // Sizes that do not exist in the new scale are dropped
+                setSizes((s) => s.filter((x) => next.sizes.includes(x)));
+              }}
+              className={inputCls}
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="SKU" htmlFor="p-sku" hint="Vide = généré">
+            <input
+              id="p-sku"
+              value={v.sku}
+              onChange={(e) => set({ sku: e.target.value })}
+              placeholder="BAM-1009"
+              className={inputCls}
+            />
+          </Field>
         </div>
 
-        {colors.map((c, i) => (
-          <ColorBlock
-            key={i}
-            index={i}
-            color={c}
-            onChange={(next) => setColor(i, next)}
-            onRemove={() => removeColor(i)}
-          />
-        ))}
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Prix (MAD)" htmlFor="p-price">
+            <input
+              id="p-price"
+              required
+              inputMode="decimal"
+              value={v.price}
+              onChange={(e) => set({ price: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Ancien prix" htmlFor="p-old" hint="Pour une promo">
+            <input
+              id="p-old"
+              inputMode="decimal"
+              value={v.oldPrice}
+              onChange={(e) => set({ oldPrice: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Coût d'achat" htmlFor="p-cost">
+            <input
+              id="p-cost"
+              inputMode="decimal"
+              value={v.cost}
+              onChange={(e) => set({ cost: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+        </div>
 
-        <Button type="button" variant="outline" size="lg" onClick={addColor}>
-          <Plus className="size-4" aria-hidden />
-          Ajouter une couleur
-        </Button>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field
+            label="Stock initial"
+            htmlFor="p-stock"
+            hint={initial ? "Modifiable via « Stock »" : undefined}
+          >
+            <input
+              id="p-stock"
+              inputMode="numeric"
+              disabled={Boolean(initial)}
+              value={v.stock}
+              onChange={(e) => set({ stock: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Seuil d'alerte" htmlFor="p-low">
+            <input
+              id="p-low"
+              inputMode="numeric"
+              value={v.lowStockAt}
+              onChange={(e) => set({ lowStockAt: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+        </div>
+
+        <label className="flex cursor-pointer items-center gap-2.5 text-sm">
+          <input
+            type="checkbox"
+            checked={v.active}
+            onChange={(e) => set({ active: e.target.checked })}
+            className="size-4 accent-[var(--primary)]"
+          />
+          Produit actif (vendable)
+        </label>
       </div>
 
-      <label className="flex cursor-pointer items-center gap-2.5 text-sm">
-        <input
-          type="checkbox"
-          checked={v.active}
-          onChange={(e) => set({ active: e.target.checked })}
-          className="size-4 accent-[var(--primary)]"
-        />
-        Produit actif (vendable)
-      </label>
+      {/* Right column: sizes, colours and photos */}
+      <div className="space-y-4">
+        <SizePicker scale={scale} value={sizes} onChange={setSizes} />
 
-      {error && <Alert>{error}</Alert>}
-      <FormActions
-        submitLabel={initial ? "Enregistrer" : "Créer le produit"}
-        onCancel={onClose}
-      />
+        <div className="space-y-2">
+          <div>
+            <p className="text-xs font-medium">Couleurs et photos</p>
+            <p className="text-xs text-muted-foreground">
+              Chaque couleur a ses photos (jusqu&apos;à {MAX_PER_COLOR}). La
+              première est la couverture.
+            </p>
+          </div>
+
+          <ul aria-label="Couleurs du produit" className="flex flex-wrap gap-1.5">
+            {colors.map((c, i) => {
+              const on = i === current;
+              return (
+                <li key={i}>
+                  <button
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setActiveColor(i)}
+                    className={`flex h-8 items-center gap-2 rounded-md border px-2.5 text-xs font-semibold transition-colors ${
+                      on
+                        ? "border-primary bg-accent text-foreground"
+                        : "border-input text-muted-foreground hover:bg-accent hover:text-foreground"
+                    }`}
+                  >
+                    <span
+                      aria-hidden
+                      className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.5)]"
+                      style={{ backgroundColor: c.hex }}
+                    />
+                    {c.name.trim() || `Couleur ${i + 1}`}
+                  </button>
+                </li>
+              );
+            })}
+            <li>
+              <button
+                type="button"
+                onClick={addColor}
+                className="flex h-8 items-center gap-1.5 rounded-md border border-dashed border-input px-2.5 text-xs font-semibold text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <Plus className="size-3.5" aria-hidden />
+                Couleur
+              </button>
+            </li>
+          </ul>
+
+          {colors[current] && (
+            <ColorBlock
+              key={current}
+              index={current}
+              color={colors[current]}
+              onChange={(next) => setColor(current, next)}
+              onRemove={() => removeColor(current)}
+            />
+          )}
+        </div>
+      </div>
+
+      <div className="lg:col-span-2">
+        {error && <Alert>{error}</Alert>}
+        <FormActions
+          submitLabel={initial ? "Enregistrer" : "Créer le produit"}
+          onCancel={onClose}
+        />
+      </div>
     </form>
   );
 }
@@ -843,6 +891,7 @@ export default function ProductsPage() {
       <Modal
         open={editing !== null}
         title={editing === "new" ? "Nouveau produit" : "Modifier le produit"}
+        size="xl"
         onClose={() => setEditing(null)}
       >
         {editing !== null && (

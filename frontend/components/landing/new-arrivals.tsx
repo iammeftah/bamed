@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { ProductCard } from "@/components/landing/product-card";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
-import { products } from "@/lib/products";
+import type { Product } from "@/lib/products";
 
-export function NewArrivals() {
+export function NewArrivals({ products }: { products: Product[] }) {
+  if (products.length === 0) return null;
+
   return (
     <section className="bg-background pb-16 md:pb-24">
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
@@ -16,8 +19,8 @@ export function NewArrivals() {
               Nouveautés
             </h2>
           </div>
-          <a
-            href="#"
+          <Link
+            href="/boutique?nouveau=1"
             className="group inline-flex shrink-0 items-center gap-2 text-sm font-semibold underline-offset-4 hover:underline md:text-base"
           >
             Tout voir
@@ -25,7 +28,7 @@ export function NewArrivals() {
               className="size-4 transition-transform duration-300 group-hover:translate-x-1"
               aria-hidden
             />
-          </a>
+          </Link>
         </Reveal>
 
         <RevealGroup className="grid grid-cols-2 gap-x-3 gap-y-9 md:grid-cols-3 md:gap-x-4 lg:grid-cols-4 lg:gap-y-14">

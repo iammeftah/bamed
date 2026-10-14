@@ -2,20 +2,20 @@ import { RevealGroup, RevealItem } from "@/components/landing/reveal";
 
 const items = [
   {
-    title: "Livraison partout au Maroc",
-    text: "Directement chez vous, où que vous soyez.",
+    title: "Coupes nettes",
+    text: "Des lignes simples, pensées pour tomber juste au quotidien.",
   },
   {
-    title: "Retours faciles",
-    text: "Pas la bonne taille ? Le retour est simple.",
-  },
-  {
-    title: "Paiement sécurisé",
-    text: "Un paiement pensé pour protéger vos données.",
+    title: "Matières sincères",
+    text: "Coton, lin, laine : des fibres choisies pour leur tenue.",
   },
   {
     title: "Coupe fidèle à la taille",
     text: "Taillé pour tomber comme vous l'attendez.",
+  },
+  {
+    title: "Un vestiaire simple",
+    text: "Moins de pièces, mieux choisies, faites pour se combiner.",
   },
 ];
 
@@ -23,7 +23,7 @@ export function TrustStrip() {
   return (
     <section
       id="confiance"
-      aria-label="Pourquoi acheter chez BAMED"
+      aria-label="Pourquoi choisir BAMED"
       className="bg-background"
     >
       <RevealGroup className="mx-auto grid w-full max-w-[1440px] grid-cols-1 gap-8 px-5 py-12 sm:grid-cols-2 md:px-10 lg:grid-cols-4">

@@ -21,6 +21,8 @@ export type ShopState = {
   /** null = no price limit chosen */
   maxPrice: number | null;
   saleOnly: boolean;
+  /** Only products tagged "Nouveau" */
+  newOnly: boolean;
   sort: Sort;
   page: number;
 };
@@ -75,6 +77,7 @@ export function parseShopParams(raw: Raw, categoryIds: string[]): ShopState {
     colors,
     maxPrice,
     saleOnly: first(raw.promo) === "1",
+    newOnly: first(raw.nouveau) === "1",
     sort,
     page,
   };
@@ -90,6 +93,7 @@ export function toQueryString(state: ShopState, priceCeiling: number): string {
   if (state.maxPrice !== null && state.maxPrice < priceCeiling)
     p.set("max", String(state.maxPrice));
   if (state.saleOnly) p.set("promo", "1");
+  if (state.newOnly) p.set("nouveau", "1");
   if (state.sort !== "pertinence") p.set("tri", state.sort);
   if (state.page > 1) p.set("page", String(state.page));
   return p.toString();

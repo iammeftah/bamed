@@ -156,15 +156,26 @@ function FiltersPanel({
         />
       </div>
 
-      <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold">
-        <input
-          type="checkbox"
-          checked={state.saleOnly}
-          onChange={(e) => update({ saleOnly: e.target.checked })}
-          className="size-5 accent-[var(--gold)]"
-        />
-        En promotion
-      </label>
+      <div className="space-y-4">
+        <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={state.newOnly}
+            onChange={(e) => update({ newOnly: e.target.checked })}
+            className="size-5 accent-[var(--gold)]"
+          />
+          Nouveautés
+        </label>
+        <label className="flex cursor-pointer items-center gap-3 text-sm font-semibold">
+          <input
+            type="checkbox"
+            checked={state.saleOnly}
+            onChange={(e) => update({ saleOnly: e.target.checked })}
+            className="size-5 accent-[var(--gold)]"
+          />
+          En promotion
+        </label>
+      </div>
 
       {activeCount > 0 && (
         <button
@@ -251,6 +262,7 @@ export function Shop({
       colors: [],
       maxPrice: null,
       saleOnly: false,
+      newOnly: false,
       page: 1,
     }));
 
@@ -263,6 +275,7 @@ export function Shop({
       colors: [],
       maxPrice: null,
       saleOnly: false,
+      newOnly: false,
       page: 1,
     }));
 
@@ -295,7 +308,8 @@ export function Shop({
     state.sizes.length +
     state.colors.length +
     (state.maxPrice !== null && state.maxPrice < priceCeiling ? 1 : 0) +
-    (state.saleOnly ? 1 : 0);
+    (state.saleOnly ? 1 : 0) +
+    (state.newOnly ? 1 : 0);
 
   // Search runs on the whole catalogue (all pages), then we cut it into pages
   const filtered = useMemo(() => {
@@ -312,6 +326,7 @@ export function Shop({
       }
       if (p.price > limit) return false;
       if (state.saleOnly && !p.oldPrice) return false;
+      if (state.newOnly && p.tag !== "Nouveau") return false;
       if (state.sizes.length && !p.sizes.some((s) => state.sizes.includes(s)))
         return false;
       if (
@@ -367,6 +382,13 @@ export function Shop({
       key: "sale",
       label: "En promotion",
       onRemove: () => update({ saleOnly: false }),
+    });
+
+  if (state.newOnly)
+    chips.push({
+      key: "new",
+      label: "Nouveautés",
+      onRemove: () => update({ newOnly: false }),
     });
 
   const typeCount = (id: string) =>

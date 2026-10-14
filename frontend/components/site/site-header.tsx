@@ -1,9 +1,9 @@
 // frontend/components/site/site-header.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import {
   AnimatePresence,
   motion,
@@ -20,13 +20,108 @@ const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 const links = [
   { label: "Accueil", href: "/" },
   { label: "Boutique", href: "/boutique" },
-  { label: "Nouveautés", href: "/#nouveautes" },
+  { label: "Nouveautés", href: "/boutique?nouveau=1" },
   { label: "À propos", href: "/a-propos" },
 ];
 
 const iconBtn =
   "flex size-10 items-center justify-center rounded-md transition-opacity hover:opacity-60 sm:size-9";
 const icon = "size-[18px]";
+
+/**
+ * Which link is active. "Nouveautés" is the shop with ?nouveau=1,
+ * "Boutique" is the rest of the shop (so only one of the two is lit).
+ */
+function isActive(pathname: string, href: string, newFilter: boolean) {
+  const [path, query] = href.split("?");
+  if (path === "/") return pathname === "/";
+  if (query === "nouveau=1") return pathname === path && newFilter;
+  if (path === "/boutique") {
+    const inShop = pathname === path || pathname.startsWith(`${path}/`);
+    return inShop && !(pathname === path && newFilter);
+  }
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
+type NavItemProps = {
+  href: string;
+  label: string;
+  variant: "desktop" | "mobile";
+  onNavigate?: () => void;
+};
+
+function NavItemView({
+  href,
+  label,
+  variant,
+  active,
+  onNavigate,
+}: NavItemProps & { active: boolean }) {
+  if (variant === "mobile") {
+    return (
+      <Link
+        href={href}
+        onClick={onNavigate}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          "flex items-center justify-between rounded-md px-3 py-2.5 font-display text-3xl font-bold uppercase leading-none transition-opacity",
+          active ? "opacity-100" : "opacity-60 hover:opacity-100",
+        )}
+      >
+        {label}
+        <ArrowUpRight className="size-5" aria-hidden />
+      </Link>
+    );
+  }
+
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "relative px-3 py-1.5 text-[13px] font-semibold tracking-tight transition-opacity",
+        active ? "opacity-100" : "opacity-60 hover:opacity-100",
+      )}
+    >
+      {label}
+      {active && (
+        <span
+          aria-hidden
+          className="absolute inset-x-3 -bottom-px h-px bg-gold"
+        />
+      )}
+    </Link>
+  );
+}
+
+/** Reads the query string, so it has to sit inside a Suspense boundary. */
+function NavItemWithQuery(props: NavItemProps) {
+  const pathname = usePathname();
+  const newFilter = useSearchParams().get("nouveau") === "1";
+  return (
+    <NavItemView
+      {...props}
+      active={isActive(pathname, props.href, newFilter)}
+    />
+  );
+}
+
+/** The fallback is the same link, active state computed from the path only. */
+function NavItem(props: NavItemProps) {
+  const pathname = usePathname();
+  return (
+    <Suspense
+      fallback={
+        <NavItemView
+          {...props}
+          active={isActive(pathname, props.href, false)}
+        />
+      }
+    >
+      <NavItemWithQuery {...props} />
+    </Suspense>
+  );
+}
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -96,28 +191,14 @@ export function SiteHeader() {
               aria-label="Navigation principale"
               className="absolute left-1/2 hidden -translate-x-1/2 items-center md:flex"
             >
-              {links.map((l) => {
-                const active = pathname === l.href;
-                return (
-                  <Link
-                    key={l.label}
-                    href={l.href}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "relative px-3 py-1.5 text-[13px] font-semibold tracking-tight transition-opacity",
-                      active ? "opacity-100" : "opacity-60 hover:opacity-100",
-                    )}
-                  >
-                    {l.label}
-                    {active && (
-                      <span
-                        aria-hidden
-                        className="absolute inset-x-3 -bottom-px h-px bg-gold"
-                      />
-                    )}
-                  </Link>
-                );
-              })}
+              {links.map((l) => (
+                <NavItem
+                  key={l.label}
+                  href={l.href}
+                  label={l.label}
+                  variant="desktop"
+                />
+              ))}
             </nav>
 
             <div className="flex items-center">
@@ -158,21 +239,13 @@ export function SiteHeader() {
                 className="absolute inset-x-0 top-full mt-2 rounded-lg bg-background p-2 text-foreground shadow-[0_20px_50px_rgb(0_0_0/0.18)] md:hidden"
               >
                 {links.map((l) => (
-                  <Link
+                  <NavItem
                     key={l.label}
                     href={l.href}
-                    onClick={close}
-                    aria-current={pathname === l.href ? "page" : undefined}
-                    className={cn(
-                      "flex items-center justify-between rounded-md px-3 py-2.5 font-display text-3xl font-bold uppercase leading-none transition-opacity",
-                      pathname === l.href
-                        ? "opacity-100"
-                        : "opacity-60 hover:opacity-100",
-                    )}
-                  >
-                    {l.label}
-                    <ArrowUpRight className="size-5" aria-hidden />
-                  </Link>
+                    label={l.label}
+                    variant="mobile"
+                    onNavigate={close}
+                  />
                 ))}
               </motion.nav>
             )}

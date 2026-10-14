@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { Reveal, RevealGroup, RevealItem } from "@/components/landing/reveal";
@@ -27,7 +28,7 @@ export function CategoryStrip({ categories }: { categories: StoreCategory[] }) {
             <RevealItem key={c.id}>
               <ScrollShift speed={shifts[i % shifts.length]}>
                 <Tilt max={7}>
-                  <a
+                  <Link
                     href={`/boutique?categorie=${encodeURIComponent(c.id)}`}
                     className="group relative block"
                     style={{ transformStyle: "preserve-3d" }}
@@ -60,7 +61,10 @@ export function CategoryStrip({ categories }: { categories: StoreCategory[] }) {
                       <span className="font-display text-2xl font-bold uppercase leading-none text-white sm:text-3xl md:text-5xl">
                         {c.label}
                       </span>
-                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-neutral-950 md:size-12">
+                      <span
+                        aria-hidden
+                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-neutral-950 md:size-12"
+                      >
                         <ArrowUpRight
                           className="size-5 transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
                           aria-hidden
@@ -68,7 +72,7 @@ export function CategoryStrip({ categories }: { categories: StoreCategory[] }) {
                       </span>
                     </div>
                     <span className="sr-only">Découvrir {c.label}</span>
-                  </a>
+                  </Link>
                 </Tilt>
               </ScrollShift>
             </RevealItem>

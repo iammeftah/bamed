@@ -133,9 +133,9 @@ function BrandMark({ brand }: { brand: Brand }) {
 }
 
 const tileClass = {
-  logo: "border-white/25 bg-white/[0.1]",
-  ghost: "border-white/10 bg-white/[0.025]",
-  gold: "border-gold/60 bg-gold/[0.1]",
+  logo: "border-white/20 bg-linear-to-b from-white/[0.12] to-white/[0.03] shadow-[inset_0_1px_0_rgb(255_255_255/0.12)]",
+  ghost: "border-white/[0.07] bg-white/[0.02]",
+  gold: "border-gold/60 bg-linear-to-b from-gold/25 to-gold/[0.06] shadow-[inset_0_1px_0_rgb(255_255_255/0.15)]",
 };
 
 export function BrandSphere({
@@ -213,7 +213,7 @@ export function BrandSphere({
               }
             >
               <div
-                className={`flex h-full w-full items-center justify-center rounded-xl`}
+                className={`flex h-full w-full items-center justify-center rounded-xl border ${tileClass[c.variant]}`}
               >
                 {c.variant !== "ghost" && <BrandMark brand={c.brand} />}
               </div>
