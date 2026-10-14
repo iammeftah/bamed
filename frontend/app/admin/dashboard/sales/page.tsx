@@ -30,7 +30,11 @@ import {
   startOfDay,
   summarize,
 } from "@/lib/dashboard/stats";
-import { useDashboard } from "@/lib/dashboard/store";
+import {
+  useDashboard,
+  type ActionResult,
+  type SaleInput,
+} from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
 import type { AdminUser, Sale, StockProduct } from "@/types/dashboard";
 
@@ -52,25 +56,26 @@ function SaleForm({
   products: StockProduct[];
   sellers: AdminUser[];
   defaultSellerId: string;
-  onSave: (i: {
-    productId: string;
-    qty: number;
-    soldById: string;
-  }) => string | null;
+  onSave: (i: SaleInput) => ActionResult;
   onClose: () => void;
 }) {
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [qty, setQty] = useState("1");
   const [soldById, setSoldById] = useState(defaultSellerId);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   const product = products.find((p) => p.id === productId);
   const q = Number(qty);
   const total = product && Number.isInteger(q) && q > 0 ? product.price * q : 0;
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({ productId, qty: q, soldById });
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const err = await onSave({ productId, qty: q, soldById });
+    setPending(false);
     if (err) setError(err);
     else onClose();
   }
@@ -131,7 +136,11 @@ function SaleForm({
         </span>
       </p>
       {error && <Alert>{error}</Alert>}
-      <FormActions submitLabel="Enregistrer la vente" onCancel={onClose} />
+      <FormActions
+        pending={pending}
+        submitLabel="Enregistrer la vente"
+        onCancel={onClose}
+      />
     </form>
   );
 }

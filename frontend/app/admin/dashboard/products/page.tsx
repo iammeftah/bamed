@@ -31,7 +31,7 @@ import {
   StatCard,
   inputCls,
 } from "@/components/dashboard/ui";
-import { useDashboard } from "@/lib/dashboard/store";
+import { useDashboard, type ActionResult } from "@/lib/dashboard/store";
 import { formatMAD, type ProductColor, type ProductImage } from "@/lib/products";
 import { scaleOfCategory, sortSizes, type SizeScale } from "@/lib/sizes";
 import type { Category, StockProduct } from "@/types/dashboard";
@@ -316,7 +316,7 @@ function ProductForm({
 }: {
   initial: StockProduct | null;
   categories: Category[];
-  onSave: (input: Omit<StockProduct, "id" | "createdAt">) => string | null;
+  onSave: (input: Omit<StockProduct, "id" | "createdAt">) => ActionResult;
   onClose: () => void;
 }) {
   const [v, setV] = useState({
@@ -336,6 +336,7 @@ function ProductForm({
   );
   const [activeColor, setActiveColor] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const set = (patch: Partial<typeof v>) => setV((x) => ({ ...x, ...patch }));
 
   // The size buttons follow the size scale of the chosen category
@@ -355,9 +356,12 @@ function ProductForm({
     setActiveColor(i <= current ? Math.max(0, current - 1) : current);
   };
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const err = await onSave({
       name: v.name,
       sku: v.sku,
       categoryId: v.categoryId,
@@ -371,6 +375,7 @@ function ProductForm({
       sizes: sortSizes(sizes),
       active: v.active,
     });
+    setPending(false);
     if (err) setError(err);
     else onClose();
   }
@@ -555,6 +560,7 @@ function ProductForm({
       <div className="lg:col-span-2">
         {error && <Alert>{error}</Alert>}
         <FormActions
+          pending={pending}
           submitLabel={initial ? "Enregistrer" : "Créer le produit"}
           onCancel={onClose}
         />
@@ -571,18 +577,23 @@ function StockForm({
   onClose,
 }: {
   product: StockProduct;
-  onSave: (delta: number, reason: string) => string | null;
+  onSave: (delta: number, reason: string) => ActionResult;
   onClose: () => void;
 }) {
   const [delta, setDelta] = useState("");
   const [reason, setReason] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   const parsed = Number(delta);
   const valid = Number.isInteger(parsed) && parsed !== 0;
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave(parsed, reason);
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const err = await onSave(parsed, reason);
+    setPending(false);
     if (err) setError(err);
     else onClose();
   }
@@ -627,7 +638,11 @@ function StockForm({
         />
       </Field>
       {error && <Alert>{error}</Alert>}
-      <FormActions submitLabel="Ajuster le stock" onCancel={onClose} />
+      <FormActions
+        pending={pending}
+        submitLabel="Ajuster le stock"
+        onCancel={onClose}
+      />
     </form>
   );
 }
@@ -933,9 +948,9 @@ export default function ProductsPage() {
         }
         error={removeError}
         onClose={() => setRemoving(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!removing) return;
-          const err = d.deleteProduct(removing.id);
+          const err = await d.deleteProduct(removing.id);
           if (err) setRemoveError(err);
           else setRemoving(null);
         }}

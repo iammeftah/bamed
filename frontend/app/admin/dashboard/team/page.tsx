@@ -20,7 +20,7 @@ import {
   trCls,
 } from "@/components/dashboard/ui";
 import { fmtDate } from "@/lib/dashboard/format";
-import { useDashboard } from "@/lib/dashboard/store";
+import { useDashboard, type ActionResult } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
 import type { AdminUser } from "@/types/dashboard";
 
@@ -30,17 +30,22 @@ function AdminForm({
   onClose,
 }: {
   initial: AdminUser | null;
-  onSave: (v: { name: string; phone: string; active: boolean }) => string | null;
+  onSave: (v: { name: string; phone: string; active: boolean }) => ActionResult;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [active, setActive] = useState(initial?.active ?? true);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({ name, phone, active });
+    if (pending) return;
+    setError(null);
+    setPending(true);
+    const err = await onSave({ name, phone, active });
+    setPending(false);
     if (err) setError(err);
     else onClose();
   }
@@ -90,6 +95,7 @@ function AdminForm({
       )}
       {error && <Alert>{error}</Alert>}
       <FormActions
+        pending={pending}
         submitLabel={initial ? "Enregistrer" : "Ajouter"}
         onCancel={onClose}
       />
@@ -192,11 +198,12 @@ export default function AdminsPage() {
                         variant="ghost"
                         size="sm"
                         disabled={self}
-                        onClick={() =>
+                        onClick={async () => {
+                          setToggleError(null);
                           setToggleError(
-                            d.saveAdmin({ ...a, active: !a.active }),
-                          )
-                        }
+                            await d.saveAdmin({ ...a, active: !a.active }),
+                          );
+                        }}
                       >
                         {a.active ? "Désactiver" : "Activer"}
                       </Button>
@@ -258,9 +265,9 @@ export default function AdminsPage() {
         }
         error={removeError}
         onClose={() => setRemoving(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!removing) return;
-          const err = d.deleteAdmin(removing.id);
+          const err = await d.deleteAdmin(removing.id);
           if (err) setRemoveError(err);
           else setRemoving(null);
         }}
