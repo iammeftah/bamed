@@ -34,14 +34,13 @@ export type StockProduct = {
 export type AdminUser = {
   id: string;
   name: string;
-  email: string;
+  /** International format, e.g. +212612345678. This is the login. */
+  phone: string;
   active: boolean;
   createdAt: number;
 };
 
-export type SaleChannel = "boutique" | "en-ligne";
-
-/** Name, price and cost are copied at sale time, so history survives later edits and deletions. */
+/** In-shop sales only: there is no online ordering. */
 export type Sale = {
   id: string;
   at: number;
@@ -54,7 +53,6 @@ export type Sale = {
   total: number;
   soldById: string;
   soldByName: string;
-  channel: SaleChannel;
 };
 
 export type LogAction = "create" | "update" | "delete" | "sale" | "stock";

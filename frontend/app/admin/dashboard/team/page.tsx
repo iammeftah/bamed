@@ -24,24 +24,23 @@ import { useDashboard } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
 import type { AdminUser } from "@/types/dashboard";
 
-
 function AdminForm({
   initial,
   onSave,
   onClose,
 }: {
   initial: AdminUser | null;
-  onSave: (v: { name: string; email: string; active: boolean }) => string | null;
+  onSave: (v: { name: string; phone: string; active: boolean }) => string | null;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
-  const [email, setEmail] = useState(initial?.email ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
   const [active, setActive] = useState(initial?.active ?? true);
   const [error, setError] = useState<string | null>(null);
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({ name, email, active });
+    const err = onSave({ name, phone, active });
     if (err) setError(err);
     else onClose();
   }
@@ -57,13 +56,20 @@ function AdminForm({
           className={inputCls}
         />
       </Field>
-      <Field label="E-mail" htmlFor="a-email">
+      <Field
+        label="Téléphone"
+        htmlFor="a-phone"
+        hint="C'est l'identifiant de connexion."
+      >
         <input
-          id="a-email"
-          type="email"
+          id="a-phone"
+          type="tel"
+          inputMode="tel"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          maxLength={20}
+          placeholder="06 12 34 56 78"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
           className={inputCls}
         />
       </Field>
@@ -78,8 +84,8 @@ function AdminForm({
       </label>
       {!initial && (
         <p className="text-xs text-muted-foreground">
-          Le mot de passe sera géré par le backend (invitation par e-mail). En
-          mode démo, seule la fiche est créée.
+          Le mot de passe est défini côté backend. En mode démo, seule la fiche
+          est créée.
         </p>
       )}
       {error && <Alert>{error}</Alert>}
@@ -156,7 +162,9 @@ export default function AdminsPage() {
                         </span>
                       )}
                     </p>
-                    <p className="text-xs text-muted-foreground">{a.email}</p>
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      {a.phone}
+                    </p>
                   </td>
                   <td className={tdCls}>
                     <Badge tone={a.active ? "success" : "neutral"}>

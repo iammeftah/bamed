@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { normalizePhone } from "@/lib/auth/phone";
 import { seedData } from "@/lib/dashboard/seed";
 import { slugify } from "@/lib/dashboard/format";
 import {
@@ -25,7 +26,6 @@ import type {
   DashboardData,
   LogEntry,
   Sale,
-  SaleChannel,
   StockProduct,
 } from "@/types/dashboard";
 
@@ -37,7 +37,8 @@ import type {
  *  - write the log entry itself, with the actor taken from the token.
  */
 
-const KEY = "bamed.dashboard.v1";
+// v2: admins now use a phone (no email) and sales have no channel
+const KEY = "bamed.dashboard.v2";
 const NOT_READY = "Données non chargées.";
 
 /** Demo mode only: photos are data URLs kept in localStorage, so keep them small. */
@@ -57,14 +58,13 @@ export type StockProductInput = Omit<StockProduct, "id" | "createdAt"> & {
 export type AdminInput = {
   id?: string;
   name: string;
-  email: string;
+  phone: string;
   active: boolean;
 };
 export type SaleInput = {
   productId: string;
   qty: number;
   soldById: string;
-  channel: SaleChannel;
 };
 
 type LogInput = Pick<LogEntry, "action" | "entity" | "entityId" | "summary">;
@@ -468,12 +468,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       const d = dataRef.current;
       if (!d) return NOT_READY;
       const name = i.name.trim();
-      const email = i.email.trim().toLowerCase();
+      const phone = normalizePhone(i.phone);
       if (!name) return "Le nom est obligatoire.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
-        return "Adresse e-mail invalide.";
-      if (d.admins.some((a) => a.email === email && a.id !== i.id))
-        return "Cette adresse e-mail est déjà utilisée.";
+      if (!phone) return "Numéro de téléphone invalide.";
+      if (d.admins.some((a) => a.phone === phone && a.id !== i.id))
+        return "Ce numéro est déjà utilisé.";
 
       if (i.id) {
         if (!d.admins.some((a) => a.id === i.id))
@@ -481,7 +480,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         if (i.id === actor.current.id && !i.active)
           return "Vous ne pouvez pas désactiver votre propre compte.";
         const nextList = d.admins.map((a) =>
-          a.id === i.id ? { ...a, name, email, active: i.active } : a,
+          a.id === i.id ? { ...a, name, phone, active: i.active } : a,
         );
         if (activeAdmins(nextList) < 1)
           return "Il doit rester au moins un administrateur actif.";
@@ -499,7 +498,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
             ...dd,
             admins: [
               ...dd.admins,
-              { id, name, email, active: i.active, createdAt },
+              { id, name, phone, active: i.active, createdAt },
             ],
           }),
           {
@@ -557,7 +556,6 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         total: p.price * i.qty,
         soldById: seller.id,
         soldByName: seller.name,
-        channel: i.channel,
       };
       mutate(
         (dd) => ({

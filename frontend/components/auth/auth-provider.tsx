@@ -1,4 +1,3 @@
-// frontend/components/auth/auth-provider.tsx
 "use client";
 
 import {
@@ -9,8 +8,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { usePathname } from "next/navigation";
 import { authService } from "@/services/auth.service";
-import { getTokens } from "@/lib/auth/storage";
 import type { LoginInput, User } from "@/types/auth";
 
 type Status = "loading" | "authenticated" | "anonymous";
@@ -25,38 +24,50 @@ export type AuthContextValue = {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const inAdmin = pathname.startsWith("/admin");
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<Status>("loading");
 
+  const expire = useCallback(() => {
+    setUser(null);
+    setStatus("anonymous");
+  }, []);
+
+  // Old versions kept the token in localStorage: wipe it
   useEffect(() => {
-    let cancelled = false;
-    const expire = () => {
-      setUser(null);
-      setStatus("anonymous");
-    };
-
-    async function restore() {
-      // Customers have no token: nothing to check, no network call
-      if (!getTokens().accessToken) return expire();
-      try {
-        const me = await authService.me();
-        if (!cancelled) {
-          setUser(me);
-          setStatus("authenticated");
-        }
-      } catch {
-        if (!cancelled) expire();
-      }
+    try {
+      window.localStorage.removeItem("bamed.auth");
+    } catch {
+      /* ignore */
     }
+  }, []);
 
-    restore();
-    // Fired by the API client when a refresh fails
+  // Fired by the API client when an admin call comes back 401
+  useEffect(() => {
     window.addEventListener("bamed:auth-expired", expire);
+    return () => window.removeEventListener("bamed:auth-expired", expire);
+  }, [expire]);
+
+  // The cookie is httpOnly, so the page can't peek at it: ask the server, but only
+  // in the back office. Shop visitors never trigger a session call.
+  useEffect(() => {
+    if (!inAdmin || status !== "loading") return;
+    let cancelled = false;
+    authService
+      .me()
+      .then((me) => {
+        if (cancelled) return;
+        setUser(me);
+        setStatus("authenticated");
+      })
+      .catch(() => {
+        if (!cancelled) expire();
+      });
     return () => {
       cancelled = true;
-      window.removeEventListener("bamed:auth-expired", expire);
     };
-  }, []);
+  }, [inAdmin, status, expire]);
 
   const login = useCallback(async (input: LoginInput) => {
     const u = await authService.login(input);

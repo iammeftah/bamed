@@ -62,32 +62,33 @@ export function seedData(now: number): DashboardData {
     createdAt: now - (100 - i * 6) * DAY,
   }));
 
+  // dev-admin matches the demo login (0600000000 / admin123)
   const admins: AdminUser[] = [
     {
       id: "dev-admin",
       name: "Admin BAMED",
-      email: "admin@bamed.ma",
+      phone: "+212600000000",
       active: true,
       createdAt: now - 160 * DAY,
     },
     {
       id: "adm-2",
       name: "Yassine El Amrani",
-      email: "yassine@bamed.ma",
+      phone: "+212611223344",
       active: true,
       createdAt: now - 120 * DAY,
     },
     {
       id: "adm-3",
       name: "Salma Bennani",
-      email: "salma@bamed.ma",
+      phone: "+212655667788",
       active: true,
       createdAt: now - 90 * DAY,
     },
     {
       id: "adm-4",
       name: "Omar Tazi",
-      email: "omar@bamed.ma",
+      phone: "+212677889900",
       active: false,
       createdAt: now - 70 * DAY,
     },
@@ -118,7 +119,6 @@ export function seedData(now: number): DashboardData {
         total: p.price * qty,
         soldById: seller.id,
         soldByName: seller.name,
-        channel: r() < 0.65 ? "boutique" : "en-ligne",
       });
     }
   }

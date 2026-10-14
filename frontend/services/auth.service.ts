@@ -1,72 +1,38 @@
-// frontend/services/auth.service.ts
 /**
- * Admin auth endpoints expected from the backend:
- *   POST /auth/login    { phone, password }  -> { accessToken, refreshToken?, user? }
- *   POST /auth/refresh  { refreshToken }     -> { accessToken, refreshToken? }
- *   POST /auth/logout   { refreshToken }     -> 204
- *   GET  /auth/me                            -> user
- * "phone" is sent in international format (+212612345678).
- * "token" is accepted instead of "accessToken", "ROLE_ADMIN" instead of "admin",
- * "phoneNumber" instead of "phone".
- * There is no register endpoint: the admin account is seeded in the backend.
- * If your backend differs, adapt toUser / establishSession below, nothing else.
+ * Admin auth. The browser only talks to our own Next.js routes:
+ *   POST /api/auth/login   { phone, password } -> { user }   (sets the httpOnly cookie)
+ *   GET  /api/auth/me                           -> user
+ *   POST /api/auth/logout                       -> 204       (revokes the token, clears the cookie)
+ * The Sanctum token lives only in that cookie, JavaScript can never read it.
+ * There is no register endpoint: admin accounts are seeded in the backend.
  */
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { mocksEnabled } from "@/lib/config";
 import { normalizePhone } from "@/lib/auth/phone";
-import { clearSession, getTokens, setTokens } from "@/lib/auth/storage";
 import type { LoginInput, User } from "@/types/auth";
 
 type UserDto = {
   id: string | number;
   name?: string;
-  fullName?: string;
-  username?: string;
   phone?: string;
-  phoneNumber?: string;
   role?: string;
-  roles?: string[];
-};
-
-type SessionDto = {
-  accessToken?: string;
-  token?: string;
-  refreshToken?: string;
-  user?: UserDto;
 };
 
 function toUser(dto: UserDto): User {
-  const raw = String(dto.role ?? dto.roles?.[0] ?? "")
-    .replace(/^ROLE_/i, "")
-    .toLowerCase();
-  if (raw !== "admin") {
+  if (dto.role !== "admin") {
     throw new ApiError(403, "Accès réservé à l'administrateur.");
   }
-  const phone = dto.phone ?? dto.phoneNumber ?? "";
   return {
     id: String(dto.id),
-    name: dto.name ?? dto.fullName ?? dto.username ?? phone,
-    phone,
+    name: dto.name ?? dto.phone ?? "",
+    phone: dto.phone ?? "",
     role: "admin",
   };
 }
 
-async function establishSession(dto: SessionDto): Promise<User> {
-  const accessToken = dto.accessToken ?? dto.token;
-  if (!accessToken) throw new ApiError(502, "Réponse du serveur invalide.");
-  setTokens({ accessToken, refreshToken: dto.refreshToken ?? null });
-  try {
-    return dto.user ? toUser(dto.user) : await me();
-  } catch (e) {
-    // Never keep a session that is not a valid admin one
-    clearSession();
-    throw e;
-  }
-}
-
 async function me(): Promise<User> {
   if (mocksEnabled) return mockMe();
-  return toUser(await apiFetch<UserDto>("/auth/me", { auth: true }));
+  return toUser(await apiFetch<UserDto>("/me", { session: true }));
 }
 
 async function login(input: LoginInput): Promise<User> {
@@ -75,27 +41,22 @@ async function login(input: LoginInput): Promise<User> {
   const credentials = { phone, password: input.password };
 
   if (mocksEnabled) return mockLogin(credentials);
-  const dto = await apiFetch<SessionDto>("/auth/login", {
+  const { user } = await apiFetch<{ user: UserDto }>("/login", {
     method: "POST",
+    session: true,
     body: credentials,
   });
-  return establishSession(dto);
+  return toUser(user);
 }
 
 async function logout(): Promise<void> {
   try {
-    const { refreshToken } = getTokens();
-    if (!mocksEnabled && refreshToken) {
-      await apiFetch("/auth/logout", {
-        method: "POST",
-        auth: true,
-        body: { refreshToken },
-      });
+    if (!mocksEnabled) {
+      await apiFetch("/logout", { method: "POST", session: true });
     }
   } catch {
-    /* the local session is cleared either way */
+    /* the cookie is cleared server-side either way */
   } finally {
-    clearSession();
     if (typeof window !== "undefined") {
       window.localStorage.removeItem(MOCK_KEY);
     }
@@ -131,7 +92,6 @@ async function mockLogin({ phone, password }: LoginInput): Promise<User> {
   if (phone !== MOCK_ADMIN.phone || password !== "admin123") {
     throw new ApiError(401, "Identifiants incorrects.");
   }
-  setTokens({ accessToken: `mock.${MOCK_ADMIN.id}`, refreshToken: null });
   window.localStorage.setItem(MOCK_KEY, JSON.stringify(MOCK_ADMIN));
   return MOCK_ADMIN;
 }

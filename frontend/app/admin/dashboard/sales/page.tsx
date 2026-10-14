@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { BarList } from "@/components/dashboard/charts";
 import {
   Alert,
-  Badge,
   Card,
   CardHeader,
   EmptyState,
@@ -33,7 +32,7 @@ import {
 } from "@/lib/dashboard/stats";
 import { useDashboard } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
-import type { AdminUser, Sale, SaleChannel, StockProduct } from "@/types/dashboard";
+import type { AdminUser, Sale, StockProduct } from "@/types/dashboard";
 
 type Period = "7" | "30" | "90" | "all";
 const periods: { id: Period; label: string }[] = [
@@ -42,11 +41,6 @@ const periods: { id: Period; label: string }[] = [
   { id: "90", label: "90 j" },
   { id: "all", label: "Tout" },
 ];
-
-const channelLabel: Record<SaleChannel, string> = {
-  boutique: "Boutique",
-  "en-ligne": "En ligne",
-};
 
 function SaleForm({
   products,
@@ -62,14 +56,12 @@ function SaleForm({
     productId: string;
     qty: number;
     soldById: string;
-    channel: SaleChannel;
   }) => string | null;
   onClose: () => void;
 }) {
   const [productId, setProductId] = useState(products[0]?.id ?? "");
   const [qty, setQty] = useState("1");
   const [soldById, setSoldById] = useState(defaultSellerId);
-  const [channel, setChannel] = useState<SaleChannel>("boutique");
   const [error, setError] = useState<string | null>(null);
 
   const product = products.find((p) => p.id === productId);
@@ -78,7 +70,7 @@ function SaleForm({
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    const err = onSave({ productId, qty: q, soldById, channel });
+    const err = onSave({ productId, qty: q, soldById });
     if (err) setError(err);
     else onClose();
   }
@@ -117,32 +109,21 @@ function SaleForm({
             className={inputCls}
           />
         </Field>
-        <Field label="Canal" htmlFor="v-channel">
+        <Field label="Vendu par" htmlFor="v-seller">
           <select
-            id="v-channel"
-            value={channel}
-            onChange={(e) => setChannel(e.target.value as SaleChannel)}
+            id="v-seller"
+            value={soldById}
+            onChange={(e) => setSoldById(e.target.value)}
             className={inputCls}
           >
-            <option value="boutique">Boutique</option>
-            <option value="en-ligne">En ligne</option>
+            {sellers.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </Field>
       </div>
-      <Field label="Vendu par" htmlFor="v-seller">
-        <select
-          id="v-seller"
-          value={soldById}
-          onChange={(e) => setSoldById(e.target.value)}
-          className={inputCls}
-        >
-          {sellers.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </Field>
       <p className="text-sm text-muted-foreground">
         Total :{" "}
         <span className="font-semibold text-foreground tabular-nums">
@@ -164,7 +145,7 @@ function csvCell(v: string | number) {
 
 function exportCsv(sales: Sale[]) {
   const rows = [
-    ["Date", "Produit", "Quantité", "Prix unitaire", "Total", "Vendu par", "Canal"],
+    ["Date", "Produit", "Quantité", "Prix unitaire", "Total", "Vendu par"],
     ...sales.map((s) => [
       fmtDateTime(s.at),
       s.productName,
@@ -172,7 +153,6 @@ function exportCsv(sales: Sale[]) {
       s.unitPrice,
       s.total,
       s.soldByName,
-      channelLabel[s.channel],
     ]),
   ];
   const csv = "\uFEFF" + rows.map((r) => r.map(csvCell).join(";")).join("\n");
@@ -188,7 +168,6 @@ export default function SalesPage() {
   const d = useDashboard();
   const [period, setPeriod] = useState<Period>("30");
   const [seller, setSeller] = useState("all");
-  const [channel, setChannel] = useState<"all" | SaleChannel>("all");
   const [query, setQuery] = useState("");
   const [visible, setVisible] = useState(25);
   const [adding, setAdding] = useState(false);
@@ -201,10 +180,9 @@ export default function SalesPage() {
       (s) =>
         s.at >= from &&
         (seller === "all" || s.soldById === seller) &&
-        (channel === "all" || s.channel === channel) &&
         (!q || s.productName.toLowerCase().includes(q)),
     );
-  }, [d.sales, d.now, period, seller, channel, query]);
+  }, [d.sales, d.now, period, seller, query]);
 
   const sum = useMemo(() => summarize(filtered), [filtered]);
   const sellerBars = useMemo(() => bySeller(filtered), [filtered]);
@@ -224,7 +202,7 @@ export default function SalesPage() {
     <>
       <PageHeader
         title="Ventes"
-        description="Chaque vente est liée à la personne qui l'a réalisée."
+        description="Les ventes en boutique, liées à la personne qui les a réalisées."
         actions={
           <>
             <Button
@@ -270,20 +248,6 @@ export default function SalesPage() {
             </option>
           ))}
         </select>
-        <select
-          aria-label="Canal"
-          value={channel}
-          onChange={(e) => {
-            setChannel(e.target.value as "all" | SaleChannel);
-            setVisible(25);
-          }}
-          className={`${inputCls} w-auto`}
-        >
-          {/* There s no online shopping , we only have shop transactions , remove the online shopping case, and do the analytics on only what we sold on the boutique */}
-          <option value="all">Tous les canaux</option>
-          <option value="boutique">Boutique</option>
-          <option value="en-ligne">En ligne</option>
-        </select>
         <label className="relative block min-w-0 flex-1 basis-48">
           <span className="sr-only">Rechercher un produit</span>
           <Search
@@ -327,7 +291,6 @@ export default function SalesPage() {
                       <th className={thCls}>Qté</th>
                       <th className={thCls}>Total</th>
                       <th className={thCls}>Vendu par</th>
-                      <th className={thCls}>Canal</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -342,11 +305,6 @@ export default function SalesPage() {
                           {formatMAD(s.total)}
                         </td>
                         <td className={tdCls}>{s.soldByName}</td>
-                        <td className={tdCls}>
-                          <Badge tone={s.channel === "boutique" ? "neutral" : "primary"}>
-                            {channelLabel[s.channel]}
-                          </Badge>
-                        </td>
                       </tr>
                     ))}
                   </tbody>

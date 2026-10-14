@@ -1,5 +1,4 @@
 import { config } from "@/lib/config";
-import { clearSession, getTokens, setTokens } from "@/lib/auth/storage";
 
 export class ApiError extends Error {
   status: number;
@@ -20,16 +19,25 @@ export class ApiError extends Error {
 type QueryValue = string | number | boolean | null | undefined;
 type Query = Record<string, QueryValue | QueryValue[]>;
 
-export type RequestOptions = Omit<RequestInit, "body"> & {
+export type RequestOptions = Omit<RequestInit, "body" | "credentials"> & {
   body?: unknown;
   query?: Query;
-  /** Send the access token, and refresh it once on a 401 */
+  /**
+   * Private admin calls. They go to our own /api/admin/* proxy, which adds the
+   * token from the httpOnly cookie. Browser only.
+   */
   auth?: boolean;
-  /** Next.js server cache hint, ignored in the browser */
+  /** Session calls (login, me, logout) to our own /api/auth/*. Browser only. */
+  session?: boolean;
+  /** Next.js server cache hint, only for public calls */
   next?: { revalidate?: number | false; tags?: string[] };
 };
 
-function buildUrl(path: string, query?: Query): string {
+function buildUrl(
+  path: string,
+  query: Query | undefined,
+  scope: "public" | "admin" | "session",
+): string {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query ?? {})) {
     for (const v of Array.isArray(value) ? value : [value]) {
@@ -38,44 +46,9 @@ function buildUrl(path: string, query?: Query): string {
   }
   const qs = params.toString();
   const p = path.startsWith("/") ? path : `/${path}`;
-  return `${config.apiUrl}${p}${qs ? `?${qs}` : ""}`;
-}
-
-let refreshing: Promise<boolean> | null = null;
-
-async function doRefresh(): Promise<boolean> {
-  const { refreshToken } = getTokens();
-  if (!refreshToken) return false;
-  try {
-    const res = await fetch(buildUrl("/auth/refresh"), {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) return false;
-    const data = (await res.json()) as {
-      accessToken?: string;
-      token?: string;
-      refreshToken?: string;
-    };
-    const accessToken = data.accessToken ?? data.token;
-    if (!accessToken) return false;
-    setTokens({ accessToken, refreshToken: data.refreshToken ?? refreshToken });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Single flight: parallel 401s share one refresh call. */
-function refreshSession(): Promise<boolean> {
-  if (typeof window === "undefined") return Promise.resolve(false);
-  if (!refreshing) {
-    refreshing = doRefresh().finally(() => {
-      refreshing = null;
-    });
-  }
-  return refreshing;
+  const prefix =
+    scope === "admin" ? "/api/admin" : scope === "session" ? "/api/auth" : config.apiUrl;
+  return `${prefix}${p}${qs ? `?${qs}` : ""}`;
 }
 
 async function toApiError(res: Response): Promise<ApiError> {
@@ -104,20 +77,28 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { body, query, auth = false, headers, ...init } = options;
+  const { body, query, auth = false, session = false, headers, ...init } = options;
+  const scope = auth ? "admin" : session ? "session" : "public";
 
-  const send = () => {
-    const h = new Headers(headers);
-    h.set("Accept", "application/json");
-    const isForm = typeof FormData !== "undefined" && body instanceof FormData;
-    if (body !== undefined && !isForm) h.set("Content-Type", "application/json");
-    if (auth) {
-      const { accessToken } = getTokens();
-      if (accessToken) h.set("Authorization", `Bearer ${accessToken}`);
-    }
-    return fetch(buildUrl(path, query), {
+  if (scope !== "public" && typeof window === "undefined") {
+    throw new Error("Les appels privés se font depuis le navigateur.");
+  }
+
+  const h = new Headers(headers);
+  h.set("Accept", "application/json");
+  const isForm = typeof FormData !== "undefined" && body instanceof FormData;
+  if (body !== undefined && !isForm) h.set("Content-Type", "application/json");
+
+  let res: Response;
+  try {
+    res = await fetch(buildUrl(path, query, scope), {
       ...init,
       headers: h,
+      // Private calls are same-origin: the browser attaches the cookie itself
+      ...(scope !== "public" && {
+        credentials: "same-origin" as const,
+        cache: "no-store" as const,
+      }),
       body:
         body === undefined
           ? undefined
@@ -125,28 +106,13 @@ export async function apiFetch<T>(
             ? (body as FormData)
             : JSON.stringify(body),
     });
-  };
-
-  let res: Response;
-  try {
-    res = await send();
   } catch {
     throw new ApiError(0, "Impossible de joindre le serveur.");
   }
 
-  if (res.status === 401 && auth) {
-    if (await refreshSession()) {
-      try {
-        res = await send();
-      } catch {
-        throw new ApiError(0, "Impossible de joindre le serveur.");
-      }
-    } else {
-      clearSession();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("bamed:auth-expired"));
-      }
-    }
+  // A 401 on an admin call means the session is gone (a 401 at login is just a wrong password)
+  if (res.status === 401 && auth && typeof window !== "undefined") {
+    window.dispatchEvent(new Event("bamed:auth-expired"));
   }
 
   if (!res.ok) throw await toApiError(res);
