@@ -25,8 +25,33 @@ const securityHeaders = [
   },
 ]
 
+/** Photos uploaded through the back office are served by Laravel (/storage/...). */
+const apiOrigin = (() => {
+  try {
+    return new URL(
+      process.env.NEXT_PUBLIC_API_URL ?? process.env.BACKEND_API_URL ?? ""
+    )
+  } catch {
+    return null
+  }
+})()
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  images: {
+    remotePatterns: apiOrigin
+      ? [
+          {
+            protocol: apiOrigin.protocol.replace(":", "") as "http" | "https",
+            hostname: apiOrigin.hostname,
+            port: apiOrigin.port,
+            pathname: "/storage/**",
+          },
+        ]
+      : [],
+    // Next blocks images served from localhost by default: allowed in dev only
+    dangerouslyAllowLocalIP: process.env.NODE_ENV !== "production",
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }]
   },

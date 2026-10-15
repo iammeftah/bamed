@@ -163,6 +163,53 @@ const page = { per_page: 500, size: 500 };
 const call = { auth: true } as const;
 const enc = encodeURIComponent;
 
+/** Uploads one photo and returns its public URL. */
+async function uploadImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await apiFetch<Raw>("/uploads", {
+    ...call,
+    method: "POST",
+    body: form,
+  });
+  const inner = (res.data ?? res) as Raw;
+  const url = text(get(inner, "url", "src", "path"));
+  if (!url) throw new ApiError(502, "Réponse d'envoi invalide.");
+  return url;
+}
+
+/** The product form keeps new photos as data URLs (for the preview). */
+async function dataUrlToFile(src: string): Promise<File> {
+  const blob = await (await fetch(src)).blob();
+  const ext =
+    blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+  return new File([blob], `photo.${ext}`, { type: blob.type || "image/jpeg" });
+}
+
+/** Sends new photos to the backend and swaps their data URL for the public URL. */
+async function resolveColors(
+  productName: string,
+  colors: ProductColor[],
+): Promise<ProductColor[]> {
+  const out: ProductColor[] = [];
+  for (const c of colors) {
+    const images: ProductImage[] = [];
+    for (const [n, img] of c.images.entries()) {
+      const src = img.src.startsWith("data:")
+        ? await uploadImage(await dataUrlToFile(img.src))
+        : img.src;
+      images.push({
+        src,
+        alt:
+          img.alt ||
+          `${productName}, ${c.name.trim().toLowerCase()}, photo ${n + 1}`,
+      });
+    }
+    out.push({ name: c.name.trim(), hex: c.hex.toLowerCase(), images });
+  }
+  return out;
+}
+
 export const adminService = {
   async loadAll(): Promise<DashboardData> {
     const [c, p, a, s, l] = await Promise.all([
@@ -203,15 +250,13 @@ export const adminService = {
   },
 
   async saveProduct(i: StockProductInput) {
+    const name = i.name.trim();
+    const colors = await resolveColors(name, i.colors);
     const body = {
-      name: i.name.trim(),
+      name,
       sku: i.sku.trim() || null,
       categoryId: i.categoryId,
-      colors: i.colors.map((c) => ({
-        name: c.name.trim(),
-        hex: c.hex.toLowerCase(),
-        images: c.images.map((img) => ({ src: img.src, alt: img.alt })),
-      })),
+      colors,
       price: i.price,
       oldPrice: i.oldPrice ?? null,
       cost: i.cost,
@@ -264,18 +309,5 @@ export const adminService = {
     await apiFetch("/sales", { ...call, method: "POST", body: i });
   },
 
-  /** Uploads one photo and returns its public URL. */
-  async uploadImage(file: File): Promise<string> {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await apiFetch<Raw>("/uploads", {
-      ...call,
-      method: "POST",
-      body: form,
-    });
-    const inner = (res.data ?? res) as Raw;
-    const url = text(get(inner, "url", "src", "path"));
-    if (!url) throw new ApiError(502, "Réponse d'envoi invalide.");
-    return url;
-  },
+  uploadImage,
 };
