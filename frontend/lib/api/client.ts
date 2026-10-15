@@ -33,6 +33,19 @@ export type RequestOptions = Omit<RequestInit, "body" | "credentials"> & {
   next?: { revalidate?: number | false; tags?: string[] };
 };
 
+/**
+ * Base URL of the Laravel API for public calls.
+ * On the server it can use BACKEND_API_URL, and "localhost" is pinned to 127.0.0.1
+ * because it may resolve to ::1 first while `php artisan serve` listens on IPv4 only.
+ */
+function publicBase(): string {
+  if (typeof window !== "undefined") return config.apiUrl;
+  const raw = process.env.BACKEND_API_URL ?? config.apiUrl;
+  return raw
+    .replace(/\/+$/, "")
+    .replace(/^(https?:\/\/)localhost(?=[:/]|$)/i, "$1127.0.0.1");
+}
+
 function buildUrl(
   path: string,
   query: Query | undefined,
@@ -46,8 +59,19 @@ function buildUrl(
   }
   const qs = params.toString();
   const p = path.startsWith("/") ? path : `/${path}`;
-  const prefix =
-    scope === "admin" ? "/api/admin" : scope === "session" ? "/api/auth" : config.apiUrl;
+
+  let prefix: string;
+  if (scope === "admin") prefix = "/api/admin";
+  else if (scope === "session") prefix = "/api/auth";
+  else {
+    prefix = publicBase();
+    if (!prefix) {
+      throw new ApiError(
+        503,
+        "API non configurée : définissez NEXT_PUBLIC_API_URL.",
+      );
+    }
+  }
   return `${prefix}${p}${qs ? `?${qs}` : ""}`;
 }
 
@@ -84,6 +108,8 @@ export async function apiFetch<T>(
     throw new Error("Les appels privés se font depuis le navigateur.");
   }
 
+  const url = buildUrl(path, query, scope);
+
   const h = new Headers(headers);
   h.set("Accept", "application/json");
   const isForm = typeof FormData !== "undefined" && body instanceof FormData;
@@ -91,7 +117,7 @@ export async function apiFetch<T>(
 
   let res: Response;
   try {
-    res = await fetch(buildUrl(path, query, scope), {
+    res = await fetch(url, {
       ...init,
       headers: h,
       // Private calls are same-origin: the browser attaches the cookie itself

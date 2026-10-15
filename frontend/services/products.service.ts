@@ -8,26 +8,16 @@
  *   GET    /products?query&type&minPrice&maxPrice&sale&featured&sort&page&size
  *          -> Product[]  or  { items | content | data: Product[] }
  *   GET    /products/:id            -> Product (404 gives null)
- *   POST   /products                -> Product      (admin)
- *   PUT    /products/:id            -> Product      (admin)
- *   DELETE /products/:id            -> 204          (admin)
  *
- * Model: a product has ONE category and several colours. Each colour has its own photos:
- *   { id, name, type (category id), price, sizes,
- *     colors: [{ name, hex, images: [{ src, alt } | "url", ...] }, ...] }
- * The category decides the size scale (letters, pants, jeans, shoes, unique).
- * Older backends that send "images" / "image" on the product still work: those photos
- * are shared by every colour that has none of its own.
+ * Everything comes from the database through the Laravel API. There is no sample data.
+ * A product has ONE category and several colours. Each colour has its own photos.
  */
 import { ApiError, apiFetch } from "@/lib/api/client";
-import { mocksEnabled } from "@/lib/config";
-import {
-  products as sampleProducts,
-  sampleCategories,
-  type Product,
-  type ProductColor,
-  type ProductImage,
-  type StoreCategory,
+import type {
+  Product,
+  ProductColor,
+  ProductImage,
+  StoreCategory,
 } from "@/lib/products";
 import { defaultScale, isScaleId } from "@/lib/sizes";
 
@@ -44,8 +34,6 @@ export type ProductQuery = {
   page?: number;
   size?: number;
 };
-
-export type ProductInput = Omit<Product, "id">;
 
 type ImageDto = string | ProductImage;
 
@@ -77,9 +65,7 @@ type ProductDto = Partial<
   alt?: string;
 };
 
-type ListDto<T> =
-  | T[]
-  | { items?: T[]; content?: T[]; data?: T[] };
+type ListDto<T> = T[] | { items?: T[]; content?: T[]; data?: T[] };
 
 function unwrap<T>(res: ListDto<T>): T[] {
   if (Array.isArray(res)) return res;
@@ -138,7 +124,6 @@ function toProduct(dto: ProductDto, categories: StoreCategory[]): Product {
 const cache = { revalidate: 60, tags: ["products"] };
 
 async function getCategories(): Promise<StoreCategory[]> {
-  if (mocksEnabled) return sampleCategories;
   const res = await apiFetch<ListDto<CategoryDto>>("/categories", {
     next: { revalidate: 60, tags: ["categories"] },
   });
@@ -146,7 +131,6 @@ async function getCategories(): Promise<StoreCategory[]> {
 }
 
 async function getProducts(q: ProductQuery = {}): Promise<Product[]> {
-  if (mocksEnabled) return sampleList(q);
   const [categories, res] = await Promise.all([
     getCategories(),
     apiFetch<ListDto<ProductDto>>("/products", { query: q, next: cache }),
@@ -163,7 +147,6 @@ async function getNewArrivals(limit = 8): Promise<Product[]> {
 }
 
 async function getProduct(id: string): Promise<Product | null> {
-  if (mocksEnabled) return sampleProducts.find((p) => p.id === id) ?? null;
   try {
     const [categories, dto] = await Promise.all([
       getCategories(),
@@ -178,76 +161,10 @@ async function getProduct(id: string): Promise<Product | null> {
   }
 }
 
-function demoOnly(): never {
-  throw new ApiError(
-    503,
-    "Mode démo : connectez un backend pour modifier le catalogue.",
-  );
-}
-
-async function createProduct(input: ProductInput): Promise<Product> {
-  if (mocksEnabled) demoOnly();
-  const [categories, dto] = await Promise.all([
-    getCategories(),
-    apiFetch<ProductDto>("/products", {
-      method: "POST",
-      auth: true,
-      body: input,
-    }),
-  ]);
-  return toProduct(dto, categories);
-}
-
-async function updateProduct(
-  id: string,
-  input: Partial<ProductInput>,
-): Promise<Product> {
-  if (mocksEnabled) demoOnly();
-  const [categories, dto] = await Promise.all([
-    getCategories(),
-    apiFetch<ProductDto>(`/products/${encodeURIComponent(id)}`, {
-      method: "PUT",
-      auth: true,
-      body: input,
-    }),
-  ]);
-  return toProduct(dto, categories);
-}
-
-async function deleteProduct(id: string): Promise<void> {
-  if (mocksEnabled) demoOnly();
-  await apiFetch<void>(`/products/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    auth: true,
-  });
-}
-
 export const productsService = {
   getCategories,
   getProducts,
   getFeatured,
   getNewArrivals,
   getProduct,
-  createProduct,
-  updateProduct,
-  deleteProduct,
 };
-
-/* ---------- Sample data mode (no backend configured) ---------- */
-
-function sampleList(q: ProductQuery): Product[] {
-  const term = q.query?.trim().toLowerCase();
-  const list = sampleProducts.filter(
-    (p) =>
-      (!q.type || p.type === q.type) &&
-      (!term || `${p.name} ${p.category}`.toLowerCase().includes(term)) &&
-      (q.minPrice == null || p.price >= q.minPrice) &&
-      (q.maxPrice == null || p.price <= q.maxPrice) &&
-      (!q.sale || Boolean(p.oldPrice)) &&
-      (!q.featured || p.featured),
-  );
-  if (q.sort === "prix-asc") list.sort((a, b) => a.price - b.price);
-  if (q.sort === "prix-desc") list.sort((a, b) => b.price - a.price);
-  if (q.sort === "nouveautes") list.sort((a, b) => b.addedAt - a.addedAt);
-  return q.size ? list.slice(0, q.size) : list;
-}

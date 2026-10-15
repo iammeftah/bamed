@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import {
   AreaChart,
   BarList,
@@ -30,7 +29,6 @@ import {
   topProducts,
   weeklyCandles,
 } from "@/lib/dashboard/stats";
-import { mocksEnabled } from "@/lib/config";
 import { useDashboard } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
 
@@ -74,19 +72,12 @@ export default function OverviewPage() {
         title="Vue d'ensemble"
         description="L'activité de la boutique en un coup d'œil."
         actions={
-          <>
-            <Segmented
-              label="Période"
-              value={days}
-              options={ranges}
-              onChange={setDays}
-            />
-            {mocksEnabled && (
-              <Button variant="ghost" size="lg" onClick={d.resetDemo}>
-                Réinitialiser la démo
-              </Button>
-            )}
-          </>
+          <Segmented
+            label="Période"
+            value={days}
+            options={ranges}
+            onChange={setDays}
+          />
         }
       />
 

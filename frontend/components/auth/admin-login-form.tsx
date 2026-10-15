@@ -13,7 +13,6 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { ApiError } from "@/lib/api/client";
 import { ADMIN_HOME } from "@/lib/auth/redirect";
-import { mocksEnabled } from "@/lib/config";
 
 const inputClass =
   "h-10 w-full rounded-md border border-input bg-card px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-ring aria-[invalid=true]:border-destructive";
@@ -27,8 +26,6 @@ export function AdminLoginForm({ next }: { next: string }) {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const showDemo = mocksEnabled && process.env.NODE_ENV !== "production";
 
   // Signed in (already, or just now): go to the dashboard.
   // A full page load is used on purpose: the server then sees the new cookie,
@@ -165,14 +162,6 @@ export function AdminLoginForm({ next }: { next: string }) {
             )}
           </button>
         </form>
-
-        {showDemo && (
-          <p className="mt-6 rounded-md border border-border bg-card px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
-            Mode démo :{" "}
-            <span className="font-medium text-foreground">0600000000</span> /{" "}
-            <span className="font-medium text-foreground">admin123</span>
-          </p>
-        )}
       </div>
     </main>
   );

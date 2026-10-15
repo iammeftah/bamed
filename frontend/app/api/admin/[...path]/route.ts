@@ -12,6 +12,7 @@ import {
 import { clearSessionToken, getSessionToken } from "@/lib/server/session";
 
 const ROOTS = new Set([
+  "overview",
   "categories",
   "products",
   "admins",

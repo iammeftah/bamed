@@ -5,11 +5,17 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { User } from "@/types/auth";
 
+/**
+ * "localhost" can resolve to ::1 first, while `php artisan serve` only listens on
+ * IPv4. That costs a failed attempt on every call, so it is pinned to 127.0.0.1.
+ */
 const BASE = (
   process.env.BACKEND_API_URL ??
   process.env.NEXT_PUBLIC_API_URL ??
   ""
-).replace(/\/+$/, "");
+)
+  .replace(/\/+$/, "")
+  .replace(/^(https?:\/\/)localhost(?=[:/]|$)/i, "$1127.0.0.1");
 
 export const backendConfigured = BASE !== "";
 
@@ -100,7 +106,7 @@ export async function backendFetch(
       cache: "no-store",
       // Never follow redirects: they could carry the Authorization header elsewhere
       redirect: "manual",
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(30_000),
     });
   } catch {
     return new Response(null, { status: 502 });

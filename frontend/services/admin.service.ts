@@ -159,7 +159,6 @@ export function errorMessage(e: unknown): string {
   return "Une erreur est survenue. Réessayez.";
 }
 
-const page = { per_page: 500, size: 500 };
 const call = { auth: true } as const;
 const enc = encodeURIComponent;
 
@@ -210,22 +209,29 @@ async function resolveColors(
   return out;
 }
 
+/** Loads everything with ONE request (GET /admin/overview). */
+async function fetchAll(): Promise<DashboardData> {
+  const res = await apiFetch<Raw>("/overview", { ...call });
+  return {
+    categories: list(res.categories).map(toCategory),
+    products: list(res.products).map(toProduct),
+    admins: list(res.admins).map(toAdmin),
+    sales: list(res.sales).map(toSale).sort((x, y) => y.at - x.at),
+    logs: list(res.logs).map(toLog).sort((x, y) => y.at - x.at),
+  };
+}
+
+/** While a load is running, every caller shares it (React Strict Mode runs effects twice in dev). */
+let inflight: Promise<DashboardData> | null = null;
+
 export const adminService = {
-  async loadAll(): Promise<DashboardData> {
-    const [c, p, a, s, l] = await Promise.all([
-      apiFetch<unknown>("/categories", { ...call, query: page }),
-      apiFetch<unknown>("/products", { ...call, query: page }),
-      apiFetch<unknown>("/admins", { ...call, query: page }),
-      apiFetch<unknown>("/sales", { ...call, query: page }),
-      apiFetch<unknown>("/logs", { ...call, query: page }),
-    ]);
-    return {
-      categories: list(c).map(toCategory),
-      products: list(p).map(toProduct),
-      admins: list(a).map(toAdmin),
-      sales: list(s).map(toSale).sort((x, y) => y.at - x.at),
-      logs: list(l).map(toLog).sort((x, y) => y.at - x.at),
-    };
+  loadAll(): Promise<DashboardData> {
+    if (!inflight) {
+      inflight = fetchAll().finally(() => {
+        inflight = null;
+      });
+    }
+    return inflight;
   },
 
   async saveCategory(i: CategoryInput) {
