@@ -185,6 +185,21 @@ async function dataUrlToFile(src: string): Promise<File> {
   return new File([blob], `photo.${ext}`, { type: blob.type || "image/jpeg" });
 }
 
+/**
+ * Photos already sent to the backend during the current save.
+ * If the save fails (validation error...) and the admin retries, the same
+ * photo reuses its URL instead of creating a second file on the server.
+ */
+const uploaded = new Map<string, string>();
+
+async function uploadOnce(dataUrl: string): Promise<string> {
+  const known = uploaded.get(dataUrl);
+  if (known) return known;
+  const url = await uploadImage(await dataUrlToFile(dataUrl));
+  uploaded.set(dataUrl, url);
+  return url;
+}
+
 /** Sends new photos to the backend and swaps their data URL for the public URL. */
 async function resolveColors(
   productName: string,
@@ -195,7 +210,7 @@ async function resolveColors(
     const images: ProductImage[] = [];
     for (const [n, img] of c.images.entries()) {
       const src = img.src.startsWith("data:")
-        ? await uploadImage(await dataUrlToFile(img.src))
+        ? await uploadOnce(img.src)
         : img.src;
       images.push({
         src,
@@ -223,6 +238,9 @@ async function fetchAll(): Promise<DashboardData> {
 
 /** While a load is running, every caller shares it (React Strict Mode runs effects twice in dev). */
 let inflight: Promise<DashboardData> | null = null;
+
+/** True while a product is being saved: a second click or Enter is refused. */
+let savingProduct = false;
 
 export const adminService = {
   loadAll(): Promise<DashboardData> {
@@ -256,33 +274,43 @@ export const adminService = {
   },
 
   async saveProduct(i: StockProductInput) {
-    const name = i.name.trim();
-    const colors = await resolveColors(name, i.colors);
-    const body = {
-      name,
-      sku: i.sku.trim() || null,
-      categoryId: i.categoryId,
-      colors,
-      price: i.price,
-      oldPrice: i.oldPrice ?? null,
-      cost: i.cost,
-      lowStockAt: i.lowStockAt,
-      sizes: i.sizes,
-      active: i.active,
-    };
-    if (i.id) {
-      // stock is only changed through adjustStock and sales
-      await apiFetch(`/products/${enc(i.id)}`, {
-        ...call,
-        method: "PUT",
-        body,
-      });
-    } else {
-      await apiFetch("/products", {
-        ...call,
-        method: "POST",
-        body: { ...body, stock: i.stock },
-      });
+    if (savingProduct) {
+      throw new ApiError(409, "Enregistrement déjà en cours.");
+    }
+    savingProduct = true;
+    try {
+      const name = i.name.trim();
+      const colors = await resolveColors(name, i.colors);
+      const body = {
+        name,
+        sku: i.sku.trim() || null,
+        categoryId: i.categoryId,
+        colors,
+        price: i.price,
+        oldPrice: i.oldPrice ?? null,
+        cost: i.cost,
+        lowStockAt: i.lowStockAt,
+        sizes: i.sizes,
+        active: i.active,
+      };
+      if (i.id) {
+        // stock is only changed through adjustStock and sales
+        await apiFetch(`/products/${enc(i.id)}`, {
+          ...call,
+          method: "PUT",
+          body,
+        });
+      } else {
+        await apiFetch("/products", {
+          ...call,
+          method: "POST",
+          body: { ...body, stock: i.stock },
+        });
+      }
+      // Saved: the photos are now owned by the product
+      uploaded.clear();
+    } finally {
+      savingProduct = false;
     }
   },
 
@@ -299,7 +327,14 @@ export const adminService = {
   },
 
   async saveAdmin(i: AdminInput) {
-    const body = { name: i.name.trim(), phone: i.phone, active: i.active };
+    const body: Record<string, unknown> = {
+      name: i.name.trim(),
+      phone: i.phone,
+      active: i.active,
+    };
+    // Empty password = unchanged (edit) ; the backend requires one on create
+    if (i.password) body.password = i.password;
+
     if (i.id) {
       await apiFetch(`/admins/${enc(i.id)}`, { ...call, method: "PUT", body });
     } else {

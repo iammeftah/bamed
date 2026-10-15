@@ -18,14 +18,15 @@ type UserDto = {
 };
 
 function toUser(dto: UserDto): User {
-  if (dto.role !== "admin") {
-    throw new ApiError(403, "Accès réservé à l'administrateur.");
+  const role = dto.role;
+  if (role !== "admin" && role !== "super_admin") {
+    throw new ApiError(403, "Accès réservé à l'équipe.");
   }
   return {
     id: String(dto.id),
     name: dto.name ?? dto.phone ?? "",
     phone: dto.phone ?? "",
-    role: "admin",
+    role,
   };
 }
 

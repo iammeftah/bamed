@@ -19,7 +19,7 @@ export default async function DashboardLayout({
   if (!user) redirect(ADMIN_LOGIN);
 
   return (
-    <RequireAuth roles={["admin"]}>
+    <RequireAuth roles={["admin", "super_admin"]}>
       <DashboardProvider>
         <DashboardShell>{children}</DashboardShell>
       </DashboardProvider>

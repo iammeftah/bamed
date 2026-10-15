@@ -30,12 +30,18 @@ function AdminForm({
   onClose,
 }: {
   initial: AdminUser | null;
-  onSave: (v: { name: string; phone: string; active: boolean }) => ActionResult;
+  onSave: (v: {
+    name: string;
+    phone: string;
+    active: boolean;
+    password: string;
+  }) => ActionResult;
   onClose: () => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
   const [active, setActive] = useState(initial?.active ?? true);
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -44,7 +50,7 @@ function AdminForm({
     if (pending) return;
     setError(null);
     setPending(true);
-    const err = await onSave({ name, phone, active });
+    const err = await onSave({ name, phone, active, password });
     setPending(false);
     if (err) setError(err);
     else onClose();
@@ -78,6 +84,27 @@ function AdminForm({
           className={inputCls}
         />
       </Field>
+      <Field
+        label={initial ? "Nouveau mot de passe" : "Mot de passe"}
+        htmlFor="a-password"
+        hint={
+          initial
+            ? "Laissez vide pour ne pas le changer. Le changer déconnecte la personne."
+            : "8 caractères minimum."
+        }
+      >
+        <input
+          id="a-password"
+          type="password"
+          autoComplete="new-password"
+          required={!initial}
+          minLength={8}
+          maxLength={128}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className={inputCls}
+        />
+      </Field>
       <label className="flex cursor-pointer items-center gap-2.5 text-sm">
         <input
           type="checkbox"
@@ -87,12 +114,6 @@ function AdminForm({
         />
         Compte actif
       </label>
-      {!initial && (
-        <p className="text-xs text-muted-foreground">
-          Le mot de passe est défini côté backend. En mode démo, seule la fiche
-          est créée.
-        </p>
-      )}
       {error && <Alert>{error}</Alert>}
       <FormActions
         pending={pending}

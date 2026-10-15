@@ -1,6 +1,7 @@
 /**
  * Authenticated proxy: the browser calls /api/admin/products, this adds the
  * Bearer token from the httpOnly cookie and forwards to Laravel /admin/products.
+ * "system" is the developer dashboard (Laravel only allows the super admin).
  */
 import { NextResponse, type NextRequest } from "next/server";
 import {
@@ -19,6 +20,7 @@ const ROOTS = new Set([
   "sales",
   "logs",
   "uploads",
+  "system",
 ]);
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
 const MAX_BODY = 12 * 1024 * 1024; // photos are 10 MB max

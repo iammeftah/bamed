@@ -113,12 +113,13 @@ export async function backendFetch(
   }
 }
 
-/** Accepts only a real admin user, and returns only the fields the UI needs. */
+/** Accepts only a real staff user (admin or super admin), and returns only the fields the UI needs. */
 export function parseUser(raw: unknown): User | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (r.role !== "admin") return null;
+  const role = r.role;
+  if (role !== "admin" && role !== "super_admin") return null;
   if (typeof r.name !== "string" || typeof r.phone !== "string") return null;
   if (typeof r.id !== "string" && typeof r.id !== "number") return null;
-  return { id: String(r.id), name: r.name, phone: r.phone, role: "admin" };
+  return { id: String(r.id), name: r.name, phone: r.phone, role };
 }

@@ -39,6 +39,8 @@ export type AdminInput = {
   name: string;
   phone: string;
   active: boolean;
+  /** Required for a new account, optional when editing (empty = unchanged) */
+  password?: string;
 };
 export type SaleInput = {
   productId: string;
