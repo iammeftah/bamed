@@ -1,207 +1,322 @@
+// frontend/components/shop/outfit-builder.tsx
 "use client";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { RefreshCw, Sparkles } from "lucide-react";
-import { ImagePlaceholder } from "@/components/landing/image-placeholder";
-import { formatNumber, type Product, type ProductColor } from "@/lib/products";
-import {
-  buildOutfits,
-  slotLabels,
-  slotOf,
-  slotOrder,
-  type Outfit,
-  type OutfitResult,
-  type Slot,
-} from "@/lib/outfit";
+import { ChevronLeft, ChevronRight, Plus, Shuffle, X } from "lucide-react";
+import { Reveal } from "@/components/landing/reveal";
+import { SwitchingImage } from "@/components/shop/product-media";
+import { formatMAD, type Product } from "@/lib/products";
 import { cn } from "@/lib/utils";
 
-/* ---------- One suggested look ---------- */
+type Slot = "layer" | "top" | "bottom" | "shoes";
 
-function LookCard({
-  index,
-  outfit,
-  pools,
-}: {
-  index: number;
-  outfit: Outfit;
-  pools: OutfitResult["pools"];
-}) {
-  const [selection, setSelection] = useState(outfit.selection);
+const SLOT_LABEL: Record<Slot, string> = {
+  layer: "Veste",
+  top: "Haut",
+  bottom: "Bas",
+  shoes: "Chaussures",
+};
 
-  const items = slotOrder.flatMap((slot) => {
-    const pool = pools[slot];
-    const i = selection[slot];
-    if (!pool || i === undefined) return [];
-    return [{ slot, pick: pool[i % pool.length], size: pool.length }];
-  });
+/** Category slug -> slot of the look. Unknown categories (accessoires...) are ignored. */
+const SLOT_OF_TYPE: Record<string, Slot> = {
+  chemises: "top",
+  "t-shirts": "top",
+  polos: "top",
+  maille: "top",
+  hoodies: "top",
+  vestes: "layer",
+  pantalons: "bottom",
+  jeans: "bottom",
+  sneakers: "shoes",
+};
 
-  const total = items.reduce((sum, it) => sum + it.pick.product.price, 0);
+const ORDER: Slot[] = ["layer", "top", "bottom", "shoes"];
 
-  const swap = (slot: Slot, size: number) =>
-    setSelection((s) => ({ ...s, [slot]: ((s[slot] ?? 0) + 1) % size }));
-
-  return (
-    <article className="rounded-xl bg-background p-4 md:p-5">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="font-display text-3xl font-bold uppercase leading-none md:text-4xl">
-          Look {index + 1}
-        </h3>
-        <p className="text-sm font-semibold tabular-nums">
-          {formatNumber(total)} MAD
-        </p>
-      </div>
-
-      <ul
-        className={cn(
-          "mt-4 grid gap-3",
-          items.length >= 4 ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3",
-        )}
-      >
-        {items.map(({ slot, pick, size }) => {
-          const { product, color } = pick;
-          const cover = color.images[0];
-          return (
-            <li key={slot} className="relative">
-              <div className="relative overflow-hidden rounded-lg bg-muted">
-                <ImagePlaceholder
-                  src={cover?.src}
-                  alt={cover?.alt || `${product.name}, ${color.name}`}
-                  ratio="4 / 5"
-                  label={slotLabels[slot]}
-                  kind="product"
-                  sizes="(min-width:1024px) 15vw, 45vw"
-                  rounded={false}
-                />
-                {size > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => swap(slot, size)}
-                    aria-label={`Changer : ${slotLabels[slot]}`}
-                    className="absolute right-2 top-2 z-10 flex size-9 items-center justify-center rounded-full bg-background/90 text-foreground transition-colors hover:bg-background"
-                  >
-                    <RefreshCw className="size-4" aria-hidden />
-                  </button>
-                )}
-              </div>
-
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                {slotLabels[slot]}
-              </p>
-              <Link
-                href={`/boutique/${encodeURIComponent(product.id)}?couleur=${encodeURIComponent(color.name)}`}
-                className="block text-sm font-semibold leading-snug underline-offset-4 hover:underline"
-              >
-                {product.name}
-              </Link>
-              <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                  aria-hidden
-                  className="size-3 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.4)]"
-                  style={{ backgroundColor: color.hex }}
-                />
-                {color.name} · {formatNumber(product.price)} MAD
-              </p>
-            </li>
-          );
-        })}
-      </ul>
-    </article>
-  );
+/** Default pick per slot for a given shuffle number, so each shuffle gives a new look. */
+function defaultIndex(slot: Slot, seed: number, len: number) {
+  const step = { layer: 1, top: 1, bottom: 2, shoes: 3 }[slot];
+  const shift = { layer: 1, top: 0, bottom: 1, shoes: 2 }[slot];
+  return (seed * step + shift) % len;
 }
 
-/* ---------- Section ---------- */
+type Pick = { p: number; c: number };
 
-export function OutfitBuilder({
-  products,
-  colors,
-}: {
-  products: Product[];
-  colors: ProductColor[];
-}) {
-  const [chosen, setChosen] = useState<string | null>(null);
+export function OutfitBuilder({ products }: { products: Product[] }) {
+  const pools = useMemo(() => {
+    const map: Record<Slot, Product[]> = {
+      layer: [],
+      top: [],
+      bottom: [],
+      shoes: [],
+    };
+    for (const p of products) {
+      const slot = SLOT_OF_TYPE[p.type];
+      if (slot && p.colors.length > 0) map[slot].push(p);
+    }
+    return map;
+  }, [products]);
 
-  // Only offer colours that can actually make an outfit
-  const options = useMemo(
-    () => colors.filter((c) => buildOutfits(products, c).outfits.length > 0),
-    [products, colors],
-  );
+  const [seed, setSeed] = useState(0);
+  const [picks, setPicks] = useState<Partial<Record<Slot, Pick>>>({});
+  const [layerOn, setLayerOn] = useState(false);
 
-  const result = useMemo(() => {
-    const color = options.find((c) => c.name === chosen);
-    return color ? buildOutfits(products, color) : null;
-  }, [products, options, chosen]);
+  // A look needs at least a top and a bottom
+  if (pools.top.length === 0 || pools.bottom.length === 0) return null;
 
-  const usable = products.filter((p) => slotOf(p) !== null).length;
-  if (usable < 2 || options.length === 0) return null;
+  const hasLayer = pools.layer.length > 0;
+  const hasShoes = pools.shoes.length > 0;
+
+  const active: Slot[] = ORDER.filter((s) => {
+    if (s === "layer") return hasLayer && layerOn;
+    if (s === "shoes") return hasShoes;
+    return true;
+  });
+
+  function resolve(slot: Slot) {
+    const pool = pools[slot];
+    const pick = picks[slot];
+    const p = pick ? pick.p % pool.length : defaultIndex(slot, seed, pool.length);
+    const product = pool[p];
+    const c = Math.min(pick?.c ?? 0, product.colors.length - 1);
+    return { product, p, c, color: product.colors[c] };
+  }
+
+  const items = active.map((slot) => ({ slot, ...resolve(slot) }));
+  const total = items.reduce((sum, i) => sum + i.product.price, 0);
+  const byslot = Object.fromEntries(items.map((i) => [i.slot, i])) as Partial<
+    Record<Slot, (typeof items)[number]>
+  >;
+
+  function shuffle() {
+    setSeed((s) => s + 1);
+    setPicks({});
+  }
+
+  function step(slot: Slot, dir: 1 | -1) {
+    const len = pools[slot].length;
+    const current = resolve(slot).p;
+    setPicks((x) => ({ ...x, [slot]: { p: (current + dir + len) % len, c: 0 } }));
+  }
+
+  function setColor(slot: Slot, c: number) {
+    const current = resolve(slot).p;
+    setPicks((x) => ({ ...x, [slot]: { p: current, c } }));
+  }
+
+  const href = (i: (typeof items)[number]) =>
+    `/boutique/${encodeURIComponent(i.product.id)}?couleur=${encodeURIComponent(i.color.name)}`;
+
+  function Tile({
+    slot,
+    className,
+  }: {
+    slot: Slot;
+    className?: string;
+  }) {
+    const i = byslot[slot];
+    if (!i) return null;
+    const image = i.color.images[0] ?? { src: "", alt: i.product.name };
+    return (
+      <Link
+        href={href(i)}
+        className={cn(
+          "group relative isolate block overflow-hidden rounded-xl bg-background",
+          className,
+        )}
+      >
+        <SwitchingImage
+          image={image}
+          label={SLOT_LABEL[slot]}
+          sizes="(min-width:1024px) 25vw, 50vw"
+        />
+        <span className="absolute bottom-2 left-2 z-10 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider backdrop-blur">
+          {SLOT_LABEL[slot]}
+        </span>
+        <span className="sr-only">
+          {i.product.name}, {i.color.name}
+        </span>
+      </Link>
+    );
+  }
+
+  const layerItem = byslot.layer;
+  const layerImage = layerItem?.color.images[0] ?? {
+    src: "",
+    alt: layerItem?.product.name ?? "",
+  };
 
   return (
     <section
-      id="looks"
-      aria-labelledby="looks-title"
-      className="scroll-mt-24 bg-muted py-12 md:py-16"
+      aria-labelledby="outfit-title"
+      className="bg-muted py-16 md:py-24"
     >
       <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
-        <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-          <Sparkles className="size-3.5 text-gold" aria-hidden />
-          Suggestion de looks
-        </p>
-        <h2
-          id="looks-title"
-          className="font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl"
-        >
-          Composez votre look
-        </h2>
-        <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground">
-          Choisissez une couleur, on vous propose des tenues complètes qui
-          vont bien ensemble. Changez chaque pièce jusqu&apos;à trouver la
-          bonne.
-        </p>
-
-        <div
-          role="group"
-          aria-label="Couleur du look"
-          className="mt-6 flex flex-wrap gap-3"
-        >
-          {options.map((c) => {
-            const on = chosen === c.name;
-            return (
-              <button
-                key={c.name}
-                type="button"
-                aria-pressed={on}
-                aria-label={c.name}
-                title={c.name}
-                onClick={() => setChosen(on ? null : c.name)}
-                style={{ backgroundColor: c.hex }}
-                className={cn(
-                  "size-11 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.35)] ring-offset-2 ring-offset-muted transition-shadow",
-                  on && "ring-2 ring-foreground",
-                )}
-              />
-            );
-          })}
-        </div>
-
-        {chosen && result && (
-          <>
-            <p aria-live="polite" className="mt-6 text-sm text-muted-foreground">
-              {result.outfits.length} look{result.outfits.length > 1 ? "s" : ""}{" "}
-              en <span className="font-semibold text-foreground">{chosen}</span>
+        <Reveal className="mb-10 flex flex-wrap items-end justify-between gap-4 md:mb-14">
+          <div>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Composez
             </p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-3">
-              {result.outfits.map((o, i) => (
-                // key includes the colour: swaps reset when the colour changes
-                <LookCard
-                  key={`${chosen}-${o.id}`}
-                  index={i}
-                  outfit={o}
-                  pools={result.pools}
-                />
-              ))}
+            <h2
+              id="outfit-title"
+              className="font-display text-5xl font-bold uppercase leading-[0.9] md:text-7xl"
+            >
+              Votre look du jour
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={shuffle}
+            className="inline-flex h-11 items-center gap-2 rounded-md bg-gold px-5 text-sm font-semibold text-gold-foreground transition-colors hover:bg-gold/90 active:scale-[0.98]"
+          >
+            <Shuffle className="size-4" aria-hidden />
+            Autre look
+          </button>
+        </Reveal>
+
+        <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-16">
+          {/* Board */}
+          <div className="lg:col-span-6">
+            <div className="relative mx-auto grid aspect-[4/5] w-full max-w-xl grid-cols-2 grid-rows-2 gap-2">
+              <div className="relative row-span-2">
+                <Tile slot="top" className="h-full w-full" />
+                {layerItem && (
+                  <Link
+                    href={href(layerItem)}
+                    className="absolute bottom-2 left-2 z-20 block aspect-[4/5] w-[42%] overflow-hidden rounded-xl border-2 border-gold bg-background shadow-[0_10px_30px_rgb(0_0_0/0.25)]"
+                  >
+                    <SwitchingImage
+                      image={layerImage}
+                      label="Veste"
+                      sizes="20vw"
+                    />
+                    <span className="sr-only">
+                      {layerItem.product.name}, {layerItem.color.name}
+                    </span>
+                  </Link>
+                )}
+              </div>
+              <Tile
+                slot="bottom"
+                className={cn("h-full w-full", !hasShoes && "row-span-2")}
+              />
+              {hasShoes && <Tile slot="shoes" className="h-full w-full" />}
             </div>
-          </>
-        )}
+          </div>
+
+          {/* Panel */}
+          <div className="lg:col-span-6">
+            <ul className="divide-y divide-border border-y border-border">
+              {items.map((i) => (
+                <li key={i.slot} className="py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                        {SLOT_LABEL[i.slot]}
+                      </p>
+                      <Link
+                        href={href(i)}
+                        className="mt-1 block text-lg font-semibold tracking-tight underline-offset-4 hover:underline"
+                      >
+                        {i.product.name}
+                      </Link>
+                      <p className="mt-0.5 text-sm text-muted-foreground">
+                        {i.color.name}
+                      </p>
+                    </div>
+
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <p className="font-display text-3xl font-bold leading-none tabular-nums">
+                        {formatMAD(i.product.price)}
+                      </p>
+                      <div className="flex items-center gap-1">
+                        {pools[i.slot].length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => step(i.slot, -1)}
+                              aria-label={`${SLOT_LABEL[i.slot]} précédent`}
+                              className="flex size-9 items-center justify-center rounded-md bg-background transition-colors hover:bg-foreground/10"
+                            >
+                              <ChevronLeft className="size-4" aria-hidden />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => step(i.slot, 1)}
+                              aria-label={`${SLOT_LABEL[i.slot]} suivant`}
+                              className="flex size-9 items-center justify-center rounded-md bg-background transition-colors hover:bg-foreground/10"
+                            >
+                              <ChevronRight className="size-4" aria-hidden />
+                            </button>
+                          </>
+                        )}
+                        {i.slot === "layer" && (
+                          <button
+                            type="button"
+                            onClick={() => setLayerOn(false)}
+                            aria-label="Retirer la veste"
+                            className="flex size-9 items-center justify-center rounded-md bg-background transition-colors hover:bg-foreground/10"
+                          >
+                            <X className="size-4" aria-hidden />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {i.product.colors.length > 1 && (
+                    <ul
+                      aria-label={`Couleurs, ${SLOT_LABEL[i.slot]}`}
+                      className="mt-3 flex items-center gap-2"
+                    >
+                      {i.product.colors.map((c, n) => (
+                        <li key={c.name}>
+                          <button
+                            type="button"
+                            title={c.name}
+                            aria-label={c.name}
+                            aria-pressed={n === i.c}
+                            onClick={() => setColor(i.slot, n)}
+                            style={{ backgroundColor: c.hex }}
+                            className={cn(
+                              "relative block size-5 rounded-full shadow-[inset_0_0_0_1px_rgb(128_128_128/0.4)] ring-offset-2 ring-offset-muted transition-shadow after:absolute after:-inset-1.5 after:content-['']",
+                              n === i.c && "ring-2 ring-foreground",
+                            )}
+                          />
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+
+            {hasLayer && !layerOn && (
+              <button
+                type="button"
+                onClick={() => setLayerOn(true)}
+                className="mt-4 inline-flex h-10 items-center gap-2 rounded-md border border-border px-4 text-sm font-semibold transition-colors hover:bg-background"
+              >
+                <Plus className="size-4" aria-hidden />
+                Ajouter une veste
+              </button>
+            )}
+
+            <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                  Total du look
+                </p>
+                <p className="mt-1 font-display text-5xl font-bold leading-none tabular-nums md:text-6xl">
+                  {formatMAD(total)}
+                </p>
+              </div>
+              <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
+                Notez les pièces, puis passez les essayer en boutique.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
