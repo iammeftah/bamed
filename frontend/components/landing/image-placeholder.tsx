@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Camera, ImageIcon, Shirt, Tag } from "lucide-react";
+import { resolveImageSrc } from "@/lib/images";
 import { cn } from "@/lib/utils";
 
 const icons = {
@@ -43,6 +44,9 @@ export function ImagePlaceholder({
   const [failed, setFailed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
+  // Backend photo URLs become same-origin paths (see lib/images.ts)
+  const resolved = resolveImageSrc(src);
+
   // Catches a 404 that happened before React hydrated
   useEffect(() => {
     const el = imgRef.current;
@@ -50,7 +54,7 @@ export function ImagePlaceholder({
   }, []);
 
   const fill = ratio === "fill";
-  const showImage = Boolean(src) && !failed;
+  const showImage = Boolean(resolved) && !failed;
   const Icon = icons[kind];
   const dark = tone === "dark";
 
@@ -68,7 +72,9 @@ export function ImagePlaceholder({
       {showImage ? (
         <Image
           ref={imgRef}
-          src={src as string}
+          // key: a new photo gets a fresh error state
+          key={resolved}
+          src={resolved as string}
           alt={alt}
           fill
           sizes={sizes}

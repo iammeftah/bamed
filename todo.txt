@@ -1,0 +1,3 @@
+why does an admin can change another admin his password ?? 
+only super admin can change passwords , and we need to have an admin settings where he can change his password 
+

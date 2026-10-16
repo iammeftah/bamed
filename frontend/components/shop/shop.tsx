@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { OutfitBuilder } from "@/components/shop/outfit-builder";
 import { Pagination } from "@/components/shop/pagination";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import {
@@ -432,6 +433,8 @@ export function Shop({
         </div>
       </section>
 
+      
+
       <section aria-label="Catalogue" className="pb-20 md:pb-28">
         <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
           {loadError && (
@@ -602,6 +605,10 @@ export function Shop({
           </div>
         </div>
       </section>
+
+      {/* Smart outfit suggestions: pick a colour, get complete looks */}
+      <OutfitBuilder products={products} colors={allColors} />
+
 
       {/* Mobile filters sheet */}
       <AnimatePresence>

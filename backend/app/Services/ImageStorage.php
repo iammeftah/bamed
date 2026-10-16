@@ -70,7 +70,8 @@ class ImageStorage
         $path = self::DIR.'/'.Str::random(40).'.webp';
         Storage::disk(self::DISK)->put($path, $data);
 
-        return Storage::disk(self::DISK)->url($path);
+        return '/'.'storage/'.$path;
+        
     }
 
     /**

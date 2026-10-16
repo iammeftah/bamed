@@ -47,11 +47,20 @@ class AdminController extends Controller
     {
         abort_if($admin->isSuperAdmin(), 404);
 
+        $actor = $request->user();
         $data = $request->validated();
         $active = (bool) $data['active'];
+        $newPassword = $data['password'] ?? null;
+
+        // A password can be changed by its owner, or by the super admin. Nobody else.
+        if (! empty($newPassword) && ! $actor->isSuperAdmin() && ! $admin->is($actor)) {
+            return response()->json([
+                'message' => 'Seul le super administrateur peut changer le mot de passe d\'un autre compte.',
+            ], 403);
+        }
 
         if ($admin->active && ! $active) {
-            if ($admin->is($request->user())) {
+            if ($admin->is($actor)) {
                 throw ValidationException::withMessages([
                     'active' => 'Vous ne pouvez pas désactiver votre propre compte.',
                 ]);
@@ -64,8 +73,9 @@ class AdminController extends Controller
         $admin->active = $active;
 
         $revoke = ! $active;
-        if (! empty($data['password'])) {
-            $admin->password = $data['password'];
+        $passwordChanged = ! empty($newPassword);
+        if ($passwordChanged) {
+            $admin->password = $newPassword;
             $revoke = true;
         }
         $admin->save();
@@ -76,8 +86,13 @@ class AdminController extends Controller
         }
 
         $this->log->record(
-            $request->user(), 'update', 'admin', $admin->id,
-            sprintf('Administrateur « %s » modifié (%s)', $admin->name, $active ? 'actif' : 'désactivé'),
+            $actor, 'update', 'admin', $admin->id,
+            sprintf(
+                'Administrateur « %s » modifié (%s)%s',
+                $admin->name,
+                $active ? 'actif' : 'désactivé',
+                $passwordChanged ? ', mot de passe changé' : '',
+            ),
         );
 
         return new AdminResource($admin);

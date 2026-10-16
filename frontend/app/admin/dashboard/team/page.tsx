@@ -19,6 +19,7 @@ import {
   thCls,
   trCls,
 } from "@/components/dashboard/ui";
+import { useAuth } from "@/hooks/use-auth";
 import { fmtDate } from "@/lib/dashboard/format";
 import { useDashboard, type ActionResult } from "@/lib/dashboard/store";
 import { formatMAD } from "@/lib/products";
@@ -26,10 +27,13 @@ import type { AdminUser } from "@/types/dashboard";
 
 function AdminForm({
   initial,
+  canSetPassword,
   onSave,
   onClose,
 }: {
   initial: AdminUser | null;
+  /** False when editing another account as a regular admin: only the super admin can reset it */
+  canSetPassword: boolean;
   onSave: (v: {
     name: string;
     phone: string;
@@ -50,7 +54,13 @@ function AdminForm({
     if (pending) return;
     setError(null);
     setPending(true);
-    const err = await onSave({ name, phone, active, password });
+    const err = await onSave({
+      name,
+      phone,
+      active,
+      // Never send a password the backend would refuse
+      password: canSetPassword ? password : "",
+    });
     setPending(false);
     if (err) setError(err);
     else onClose();
@@ -84,27 +94,36 @@ function AdminForm({
           className={inputCls}
         />
       </Field>
-      <Field
-        label={initial ? "Nouveau mot de passe" : "Mot de passe"}
-        htmlFor="a-password"
-        hint={
-          initial
-            ? "Laissez vide pour ne pas le changer. Le changer déconnecte la personne."
-            : "8 caractères minimum."
-        }
-      >
-        <input
-          id="a-password"
-          type="password"
-          autoComplete="new-password"
-          required={!initial}
-          minLength={8}
-          maxLength={128}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputCls}
-        />
-      </Field>
+
+      {canSetPassword ? (
+        <Field
+          label={initial ? "Nouveau mot de passe" : "Mot de passe"}
+          htmlFor="a-password"
+          hint={
+            initial
+              ? "Laissez vide pour ne pas le changer. Le changer déconnecte la personne."
+              : "8 caractères minimum."
+          }
+        >
+          <input
+            id="a-password"
+            type="password"
+            autoComplete="new-password"
+            required={!initial}
+            minLength={8}
+            maxLength={128}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Le mot de passe d&apos;un autre compte ne peut être réinitialisé que
+          par le super administrateur.
+        </p>
+      )}
+
       <label className="flex cursor-pointer items-center gap-2.5 text-sm">
         <input
           type="checkbox"
@@ -126,6 +145,9 @@ function AdminForm({
 
 export default function AdminsPage() {
   const d = useDashboard();
+  const { user } = useAuth();
+  const isSuper = user?.role === "super_admin";
+
   const [editing, setEditing] = useState<AdminUser | "new" | null>(null);
   const [removing, setRemoving] = useState<AdminUser | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -268,6 +290,10 @@ export default function AdminsPage() {
         {editing !== null && (
           <AdminForm
             initial={editing === "new" ? null : editing}
+            // New account, own account, or super admin: the password field is available
+            canSetPassword={
+              editing === "new" || isSuper || editing.id === d.actorId
+            }
             onSave={(v) =>
               d.saveAdmin({ ...v, id: editing === "new" ? undefined : editing.id })
             }
