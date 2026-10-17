@@ -433,8 +433,6 @@ export function Shop({
         </div>
       </section>
 
-      
-
       <section aria-label="Catalogue" className="pb-20 md:pb-28">
         <div className="mx-auto w-full max-w-[1440px] px-5 md:px-10">
           {loadError && (
@@ -606,9 +604,8 @@ export function Shop({
         </div>
       </section>
 
-      {/* Smart outfit suggestions: pick a colour, get complete looks */}
-      <OutfitBuilder products={products} colors={allColors} />
-
+      {/* Outfit suggestions built from the products above */}
+      <OutfitBuilder products={products} />
 
       {/* Mobile filters sheet */}
       <AnimatePresence>
