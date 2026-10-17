@@ -15,6 +15,7 @@ class StockProductResource extends JsonResource
             'id' => (string) $this->id,
             'sku' => $this->sku,
             'name' => $this->name,
+            'brandId' => $this->brand_id ? (string) $this->brand_id : null,
             'categoryId' => (string) $this->category_id,
             'colors' => $this->colorsPayload(),
             'price' => $this->price,

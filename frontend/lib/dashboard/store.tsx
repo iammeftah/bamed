@@ -31,6 +31,18 @@ export type CategoryInput = {
   description: string;
   sizeScale: SizeScaleId;
 };
+
+// new input type, next to CategoryInput
+export type BrandInput = {
+  id?: string;
+  name: string;
+  /** Current logo URL (null = no logo) */
+  logo: string | null;
+  /** A new file picked in the form: uploaded first, replaces `logo` */
+  file?: File | null;
+};
+
+
 export type StockProductInput = Omit<StockProduct, "id" | "createdAt"> & {
   id?: string;
 };
@@ -51,6 +63,9 @@ export type SaleInput = {
 type Actions = {
   saveCategory: (i: CategoryInput) => ActionResult;
   deleteCategory: (id: string) => ActionResult;
+  // in type Actions, add
+  saveBrand: (i: BrandInput) => ActionResult;
+  deleteBrand: (id: string) => ActionResult;
   saveProduct: (i: StockProductInput) => ActionResult;
   deleteProduct: (id: string) => ActionResult;
   adjustStock: (id: string, delta: number, reason: string) => ActionResult;
@@ -74,6 +89,7 @@ const DashboardCtx = createContext<Ctx | null>(null);
 
 const empty: DashboardData = {
   categories: [],
+  brands: [],
   products: [],
   admins: [],
   sales: [],
@@ -136,6 +152,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     return {
       saveCategory: (i) => run(() => adminService.saveCategory(i)),
       deleteCategory: (id) => run(() => adminService.deleteCategory(id)),
+      saveBrand: (i) => run(() => adminService.saveBrand(i)),
+      deleteBrand: (id) => run(() => adminService.deleteBrand(id)),
       saveProduct: (i) => run(() => adminService.saveProduct(i)),
       deleteProduct: (id) => run(() => adminService.deleteProduct(id)),
       adjustStock: (id, delta, reason) =>

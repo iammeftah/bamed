@@ -16,6 +16,8 @@ export type ShopState = {
   query: string;
   /** "tous" or the id of a category */
   type: string;
+  /** "toutes" or the name of a brand */
+  brand: string;
   sizes: string[];
   colors: string[];
   /** null = no price limit chosen */
@@ -47,11 +49,19 @@ const COLOR_NAME = /^[\p{L}][\p{L} '-]{0,29}$/u;
  * Reads URL search params and returns a safe, validated state.
  * `categoryIds` are the ids of the categories that exist right now.
  */
-export function parseShopParams(raw: Raw, categoryIds: string[]): ShopState {
+export function parseShopParams(
+  raw: Raw,
+  categoryIds: string[],
+  brandIds: string[],
+): ShopState {
+  
   const query = (first(raw.q) ?? "").slice(0, 80);
 
   const cat = first(raw.categorie);
   const type = cat && categoryIds.includes(cat) ? cat : "tous";
+
+  const marque = first(raw.marque);
+  const brand = marque && brandIds.includes(marque) ? marque : "toutes";
 
   const sizes = csv(first(raw.tailles)).filter((s) =>
     allSizeValues.includes(s),
@@ -73,6 +83,7 @@ export function parseShopParams(raw: Raw, categoryIds: string[]): ShopState {
   return {
     query,
     type,
+    brand,
     sizes,
     colors,
     maxPrice,
@@ -88,6 +99,7 @@ export function toQueryString(state: ShopState, priceCeiling: number): string {
   const p = new URLSearchParams();
   if (state.query.trim()) p.set("q", state.query.trim());
   if (state.type !== "tous") p.set("categorie", state.type);
+  if (state.brand !== "toutes") p.set("marque", state.brand);
   if (state.sizes.length) p.set("tailles", state.sizes.join(","));
   if (state.colors.length) p.set("couleurs", state.colors.join(","));
   if (state.maxPrice !== null && state.maxPrice < priceCeiling)

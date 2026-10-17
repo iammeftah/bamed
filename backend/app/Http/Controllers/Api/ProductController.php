@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
-    private const WITH = ['category', 'colors.images'];
+    private const WITH = ['category', 'brand', 'colors.images'];
 
     public function __construct(
         private ActivityLogger $log,
@@ -36,6 +36,11 @@ class ProductController extends Controller
         $type = $request->query('type');
         if (is_string($type) && $type !== '') {
             $query->whereHas('category', fn ($c) => $c->where('slug', $type));
+        }
+
+        $brand = $request->query('brand');
+        if (is_string($brand) && $brand !== '') {
+            $query->whereHas('brand', fn ($b) => $b->where('slug', $brand));
         }
 
         if (is_numeric($request->query('minPrice'))) {
@@ -102,6 +107,7 @@ class ProductController extends Controller
             $product = Product::create([
                 'sku' => $data['sku'] ?? $this->skus->next(),
                 'name' => $data['name'],
+                'brand_id' => $data['brandId'] ?? null,
                 'category_id' => (int) $data['categoryId'],
                 'price' => $data['price'],
                 'old_price' => $data['oldPrice'] ?? null,
@@ -139,6 +145,7 @@ class ProductController extends Controller
             $product->update([
                 'sku' => $data['sku'] ?? $product->sku,
                 'name' => $data['name'],
+                'brand_id' => $data['brandId'] ?? null,
                 'category_id' => (int) $data['categoryId'],
                 'price' => $data['price'],
                 'old_price' => $data['oldPrice'] ?? null,

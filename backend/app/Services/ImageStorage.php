@@ -7,6 +7,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\Brand;
 
 /** Stores product photos as webp on the "public" disk and removes the ones nobody uses. */
 class ImageStorage
@@ -85,7 +86,11 @@ class ImageStorage
         foreach (array_unique(iterator_to_array($urls, false)) as $url) {
             $path = $this->pathFromUrl((string) $url);
 
-            if ($path === null || ProductImage::where('src', $url)->exists()) {
+            if (
+                $path === null
+                || ProductImage::where('src', $url)->exists()
+                || Brand::where('logo', $url)->exists()
+            ) {
                 continue;
             }
 
@@ -104,7 +109,10 @@ class ImageStorage
         $disk = Storage::disk(self::DISK);
 
         $used = array_flip(array_filter(
-            ProductImage::query()->pluck('src')->map(fn ($u) => $this->pathFromUrl((string) $u))->all()
+            ProductImage::query()->pluck('src')
+                ->merge(Brand::query()->whereNotNull('logo')->pluck('logo'))
+                ->map(fn ($u) => $this->pathFromUrl((string) $u))
+                ->all()
         ));
 
         $limit = now()->subMinutes(max(0, $minAgeMinutes))->getTimestamp();

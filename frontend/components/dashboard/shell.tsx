@@ -15,6 +15,7 @@ import {
   ShoppingCart,
   Tags,
   X,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -49,6 +50,7 @@ const groups: NavGroup[] = [
     items: [
       { label: "Produits", href: `${ADMIN_HOME}/products`, icon: Package },
       { label: "Catégories", href: `${ADMIN_HOME}/categories`, icon: Tags },
+      { label: "Marques", href: `${ADMIN_HOME}/brands`, icon: BadgeCheck },
     ],
   },
   {

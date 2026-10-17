@@ -38,6 +38,7 @@ const actionTone: Record<LogAction, "success" | "primary" | "danger" | "neutral"
 const entityLabel: Record<LogEntity, string> = {
   product: "Produit",
   category: "Catégorie",
+  brand: "Marque",
   admin: "Administrateur",
   sale: "Vente",
 };

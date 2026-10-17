@@ -34,7 +34,8 @@ import {
 import { useDashboard, type ActionResult } from "@/lib/dashboard/store";
 import { formatMAD, type ProductColor, type ProductImage } from "@/lib/products";
 import { scaleOfCategory, sortSizes, type SizeScale } from "@/lib/sizes";
-import type { Category, StockProduct } from "@/types/dashboard";
+import type { AdminBrand, Category, StockProduct } from "@/types/dashboard";
+
 
 type StatusFilter = "all" | "low" | "out" | "inactive";
 
@@ -311,11 +312,13 @@ function SizePicker({
 function ProductForm({
   initial,
   categories,
+  brands,
   onSave,
   onClose,
 }: {
   initial: StockProduct | null;
   categories: Category[];
+  brands: AdminBrand[];
   onSave: (input: Omit<StockProduct, "id" | "createdAt">) => ActionResult;
   onClose: () => void;
 }) {
@@ -323,6 +326,7 @@ function ProductForm({
     name: initial?.name ?? "",
     sku: initial?.sku ?? "",
     categoryId: initial?.categoryId ?? categories[0]?.id ?? "",
+    brandId: initial?.brandId ?? "",
     price: initial ? String(initial.price) : "",
     oldPrice: initial?.oldPrice != null ? String(initial.oldPrice) : "",
     cost: initial ? String(initial.cost) : "",
@@ -365,6 +369,7 @@ function ProductForm({
       name: v.name,
       sku: v.sku,
       categoryId: v.categoryId,
+      brandId: v.brandId || undefined,
       // An untouched empty colour row is ignored
       colors: colors.filter((c) => c.name.trim() || c.images.length > 0),
       price: num(v.price),
@@ -416,6 +421,28 @@ function ProductForm({
               ))}
             </select>
           </Field>
+
+          <Field
+            label="Marque"
+            htmlFor="p-brand"
+            hint={brands.length === 0 ? "Ajoutez des marques dans « Marques »" : "Optionnel"}
+          >
+            <select
+              id="p-brand"
+              value={v.brandId}
+              onChange={(e) => set({ brandId: e.target.value })}
+              className={inputCls}
+            >
+              <option value="">Aucune</option>
+              {brands.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+            </select>
+          </Field>
+
+
           <Field label="SKU" htmlFor="p-sku" hint="Vide = généré">
             <input
               id="p-sku"
@@ -913,6 +940,7 @@ export default function ProductsPage() {
           <ProductForm
             initial={editing === "new" ? null : editing}
             categories={d.categories}
+            brands={d.brands}
             onSave={(input) =>
               d.saveProduct({
                 ...input,

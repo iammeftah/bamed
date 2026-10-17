@@ -10,11 +10,13 @@ import type { ProductColor, ProductImage } from "@/lib/products";
 import { defaultScale, isScaleId } from "@/lib/sizes";
 import type {
   AdminInput,
+  BrandInput,
   CategoryInput,
   SaleInput,
   StockProductInput,
 } from "@/lib/dashboard/store";
 import type {
+  AdminBrand,
   AdminUser,
   Category,
   DashboardData,
@@ -91,6 +93,18 @@ function toCategory(r: Raw): Category {
   };
 }
 
+// new mapper, next to toCategory
+function toBrand(r: Raw): AdminBrand {
+  return {
+    id: text(r.id),
+    name: text(r.name),
+    slug: text(r.slug),
+    logo: text(r.logo) || undefined,
+    productCount: num(get(r, "productCount", "product_count")),
+    createdAt: time(get(r, "createdAt", "created_at")),
+  };
+}
+
 function toProduct(r: Raw): StockProduct {
   const name = text(r.name);
   const old = get(r, "oldPrice", "old_price");
@@ -99,6 +113,9 @@ function toProduct(r: Raw): StockProduct {
     sku: text(r.sku),
     name,
     categoryId: text(get(r, "categoryId", "category_id", "type")),
+    brandId: get(r, "brandId", "brand_id") != null
+      ? text(get(r, "brandId", "brand_id"))
+      : undefined,
     colors: toColors(r.colors, name),
     price: num(r.price),
     oldPrice: old != null ? num(old) : undefined,
@@ -230,6 +247,7 @@ async function fetchAll(): Promise<DashboardData> {
   return {
     categories: list(res.categories).map(toCategory),
     products: list(res.products).map(toProduct),
+    brands: list(res.brands).map(toBrand),
     admins: list(res.admins).map(toAdmin),
     sales: list(res.sales).map(toSale).sort((x, y) => y.at - x.at),
     logs: list(res.logs).map(toLog).sort((x, y) => y.at - x.at),
@@ -273,6 +291,22 @@ export const adminService = {
     await apiFetch(`/categories/${enc(id)}`, { ...call, method: "DELETE" });
   },
 
+  // in adminService, add (next to saveCategory / deleteCategory)
+  async saveBrand(i: BrandInput) {
+    // A new logo file is uploaded first, then the brand is saved with its URL
+    const logo = i.file ? await uploadImage(i.file) : i.logo;
+    const body = { name: i.name.trim(), logo };
+    if (i.id) {
+      await apiFetch(`/brands/${enc(i.id)}`, { ...call, method: "PUT", body });
+    } else {
+      await apiFetch("/brands", { ...call, method: "POST", body });
+    }
+  },
+
+  async deleteBrand(id: string) {
+    await apiFetch(`/brands/${enc(id)}`, { ...call, method: "DELETE" });
+  },
+
   async saveProduct(i: StockProductInput) {
     if (savingProduct) {
       throw new ApiError(409, "Enregistrement déjà en cours.");
@@ -285,6 +319,7 @@ export const adminService = {
         name,
         sku: i.sku.trim() || null,
         categoryId: i.categoryId,
+        brandId: i.brandId || null,
         colors,
         price: i.price,
         oldPrice: i.oldPrice ?? null,

@@ -14,6 +14,10 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Sale;
 use Illuminate\Http\Request;
+use App\Http\Resources\BrandResource;
+use App\Models\Brand;
+
+
 
 class DashboardController extends Controller
 {
@@ -23,6 +27,7 @@ class DashboardController extends Controller
     public function index(Request $request)
     {
         $categories = Category::orderBy('id')->get();
+        $brands = Brand::query()->withCount('products')->orderBy('name')->get();
 
         $products = Product::query()
             ->with(['colors.images'])
@@ -46,6 +51,7 @@ class DashboardController extends Controller
 
         return response()->json([
             'categories' => CategoryResource::collection($categories)->resolve($request),
+            'brands' => BrandResource::collection($brands)->resolve($request),
             'products' => StockProductResource::collection($products)->resolve($request),
             'admins' => AdminResource::collection($admins)->resolve($request),
             'sales' => SaleResource::collection($sales)->resolve($request),

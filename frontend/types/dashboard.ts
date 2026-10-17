@@ -11,12 +11,23 @@ export type Category = {
   createdAt: number;
 };
 
+// new type, next to Category
+export type AdminBrand = {
+  id: string;
+  name: string;
+  slug: string;
+  logo?: string;
+  productCount: number;
+  createdAt: number;
+};
+
 export type StockProduct = {
   id: string;
   sku: string;
   name: string;
   categoryId: string;
   /** Same shape as the storefront: each colour owns its photos (first = cover). */
+  brandId?: string;
   colors: ProductColor[];
   price: number;
   oldPrice?: number;
@@ -56,7 +67,8 @@ export type Sale = {
 };
 
 export type LogAction = "create" | "update" | "delete" | "sale" | "stock";
-export type LogEntity = "product" | "category" | "admin" | "sale";
+// LogEntity
+export type LogEntity = "product" | "category" | "brand" | "admin" | "sale";
 
 export type LogEntry = {
   id: string;
@@ -71,6 +83,7 @@ export type LogEntry = {
 
 export type DashboardData = {
   categories: Category[];
+  brands: AdminBrand[];
   products: StockProduct[];
   admins: AdminUser[];
   sales: Sale[];

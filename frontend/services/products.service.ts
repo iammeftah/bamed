@@ -17,6 +17,7 @@ import type {
   Product,
   ProductColor,
   ProductImage,
+  StoreBrand,
   StoreCategory,
 } from "@/lib/products";
 import { defaultScale, isScaleId } from "@/lib/sizes";
@@ -48,6 +49,16 @@ type CategoryDto = {
   name?: string;
   sizeScale?: string;
   image?: string;
+  productCount?: number;
+};
+
+// new DTO, next to CategoryDto
+type BrandDto = {
+  id?: string | number;
+  slug?: string;
+  label?: string;
+  name?: string;
+  logo?: string;
   productCount?: number;
 };
 
@@ -107,6 +118,18 @@ function toCategory(dto: CategoryDto): StoreCategory {
   };
 }
 
+// new mapper, next to toCategory
+function toBrand(dto: BrandDto): StoreBrand {
+  const id = String(dto.id ?? dto.slug ?? "");
+  return {
+    id,
+    label: dto.label ?? dto.name ?? id,
+    logo: dto.logo || undefined,
+    productCount:
+      dto.productCount != null ? Number(dto.productCount) : undefined,
+  };
+}
+
 function toProduct(dto: ProductDto, categories: StoreCategory[]): Product {
   const typeId = String(dto.type ?? dto.categoryId ?? "");
   const cat = categories.find((c) => c.id === typeId);
@@ -114,6 +137,9 @@ function toProduct(dto: ProductDto, categories: StoreCategory[]): Product {
     id: String(dto.id),
     name: dto.name,
     category: cat?.label ?? dto.category ?? "",
+    // in toProduct, replace the `brand: dto.brand || undefined,` line with
+    brand: dto.brand || undefined,
+    brandId: dto.brandId || undefined,
     type: typeId,
     sizeScale: cat?.sizeScale ?? defaultScale,
     price: Number(dto.price),
@@ -133,6 +159,14 @@ async function getCategories(): Promise<StoreCategory[]> {
     next: { revalidate: 60, tags: ["categories"] },
   });
   return unwrap(res).map(toCategory);
+}
+
+// new function, next to getCategories
+async function getBrands(): Promise<StoreBrand[]> {
+  const res = await apiFetch<ListDto<BrandDto>>("/brands", {
+    next: { revalidate: 60, tags: ["brands"] },
+  });
+  return unwrap(res).map(toBrand);
 }
 
 async function getProducts(q: ProductQuery = {}): Promise<Product[]> {
@@ -166,8 +200,10 @@ async function getProduct(id: string): Promise<Product | null> {
   }
 }
 
+// export it
 export const productsService = {
   getCategories,
+  getBrands,
   getProducts,
   getFeatured,
   getNewArrivals,

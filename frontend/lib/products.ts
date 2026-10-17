@@ -19,12 +19,28 @@ export type StoreCategory = {
   productCount?: number;
 };
 
+/** A brand of the shop. Comes from the backend (GET /brands). */
+export type StoreBrand = {
+  id: string;
+  label: string;
+  logo?: string;
+  /** Number of active products */
+  productCount?: number;
+};
+
 export type Product = {
   id: string;
   name: string;
   /** Category label shown under the name */
   category: string;
   /** Id of the category, shared by all colours. Used by the shop filters. */
+
+    /** Brand name shown on the piece, if it has one */
+  brand?: string;
+  /** Slug of the brand (used by the shop filter) */
+  brandId?: string;
+
+
   type: string;
   /** Size scale of the category, copied here so components do not need a lookup */
   sizeScale: import("@/lib/sizes").SizeScaleId;
