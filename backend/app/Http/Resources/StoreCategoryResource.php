@@ -9,6 +9,8 @@ class StoreCategoryResource extends JsonResource
 {
     /**
      * Public shape: the id is the slug, because the shop filters use it in the URL.
+     * productCount = active products, so the site can hide empty categories
+     * without downloading the whole catalogue.
      *
      * @return array<string, mixed>
      */
@@ -19,6 +21,7 @@ class StoreCategoryResource extends JsonResource
             'label' => $this->name,
             'sizeScale' => $this->size_scale,
             'image' => $this->image,
+            'productCount' => (int) ($this->active_products_count ?? 0),
         ];
     }
 }

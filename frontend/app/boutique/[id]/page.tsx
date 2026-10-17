@@ -5,7 +5,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 import { ColorPicker, ColorProvider } from "@/components/shop/product-color";
 import { ProductGallery } from "@/components/shop/product-gallery";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
-import { formatNumber, type Product } from "@/lib/products";
+import { formatNumber } from "@/lib/products";
 import { sizeScales, sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 import { productsService } from "@/services/products.service";
@@ -39,17 +39,19 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const { couleur } = await searchParams;
   const wanted = Array.isArray(couleur) ? couleur[0] : couleur;
 
-  // Same category first, then the rest, 4 suggestions at most
-  const all: Product[] = await productsService
-    .getProducts({ size: 100 })
+  // 4 suggestions at most: same category first (5 asked, so one can be this product),
+  // then a few others only if the category is too small
+  const sameCategory = await productsService
+    .getProducts({ type: product.type, size: 5 })
     .catch(() => []);
-  const related = all
-    .filter((p) => p.id !== product.id)
-    .sort(
-      (a, b) =>
-        Number(b.type === product.type) - Number(a.type === product.type),
-    )
-    .slice(0, 4);
+  let related = sameCategory.filter((p) => p.id !== product.id).slice(0, 4);
+  if (related.length < 4) {
+    const others = await productsService
+      .getProducts({ size: 8 })
+      .catch(() => []);
+    const seen = new Set([product.id, ...related.map((p) => p.id)]);
+    related = [...related, ...others.filter((p) => !seen.has(p.id))].slice(0, 4);
+  }
 
   const discount = product.oldPrice
     ? Math.round((1 - product.price / product.oldPrice) * 100)

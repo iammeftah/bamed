@@ -2,10 +2,10 @@
  * Endpoints expected from the backend:
  *
  *   GET    /categories              -> StoreCategory[]  or  { items | content | data: [...] }
- *          { id | slug, label | name, sizeScale?, image? }
+ *          { id | slug, label | name, sizeScale?, image?, productCount? }
  *          sizeScale is one of: letters, pants, jeans, shoes, unique
  *
- *   GET    /products?query&type&minPrice&maxPrice&sale&featured&sort&page&size
+ *   GET    /products?query&type&minPrice&maxPrice&sale&featured&new&sort&page&size
  *          -> Product[]  or  { items | content | data: Product[] }
  *   GET    /products/:id            -> Product (404 gives null)
  *
@@ -30,6 +30,8 @@ export type ProductQuery = {
   maxPrice?: number;
   sale?: boolean;
   featured?: boolean;
+  /** Only products added in the last 30 days (same rule as the "Nouveau" tag) */
+  new?: boolean;
   sort?: ProductSort;
   page?: number;
   size?: number;
@@ -46,6 +48,7 @@ type CategoryDto = {
   name?: string;
   sizeScale?: string;
   image?: string;
+  productCount?: number;
 };
 
 type ProductDto = Partial<
@@ -99,6 +102,8 @@ function toCategory(dto: CategoryDto): StoreCategory {
     label: dto.label ?? dto.name ?? id,
     sizeScale: isScaleId(dto.sizeScale) ? dto.sizeScale : defaultScale,
     image: dto.image || undefined,
+    productCount:
+      dto.productCount != null ? Number(dto.productCount) : undefined,
   };
 }
 
@@ -143,7 +148,7 @@ async function getFeatured(limit = 3): Promise<Product[]> {
 }
 
 async function getNewArrivals(limit = 8): Promise<Product[]> {
-  return getProducts({ sort: "nouveautes", size: limit });
+  return getProducts({ new: true, sort: "nouveautes", size: limit });
 }
 
 async function getProduct(id: string): Promise<Product | null> {

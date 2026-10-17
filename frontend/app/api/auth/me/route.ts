@@ -7,14 +7,11 @@ export async function GET() {
 
   const res = await backendFetch("/auth/me", { token });
 
-  if (res.status === 401) {
+  if (res.status === 401 || res.status === 403) {
     await clearSessionToken();
     return fail(401, "Session expirée.");
   }
-  if (!res.ok) {
-     console.error("[me] backend status", res.status, await res.clone().text().catch(() => ""));
-     return fail(502, "Service indisponible.");
-   }
+  if (!res.ok) return fail(502, "Service indisponible.");
 
   const user = parseUser(await res.json().catch(() => null));
   if (!user) {

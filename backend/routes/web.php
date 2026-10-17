@@ -2,6 +2,5 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// API only: no HTML page, no framework version.
+Route::get('/', fn () => response()->json(['name' => config('app.name')]));

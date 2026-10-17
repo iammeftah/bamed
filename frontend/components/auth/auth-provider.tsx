@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -19,6 +20,8 @@ export type AuthContextValue = {
   status: Status;
   login: (input: LoginInput) => Promise<User>;
   logout: () => Promise<void>;
+  /** Called by the dashboard with the user the server already verified */
+  hydrate: (user: User) => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -28,10 +31,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const inAdmin = pathname.startsWith("/admin");
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<Status>("loading");
+  // True once the server handed us a verified user: no need to ask again
+  const hydrated = useRef(false);
 
   const expire = useCallback(() => {
+    hydrated.current = false;
     setUser(null);
     setStatus("anonymous");
+  }, []);
+
+  const hydrate = useCallback((u: User) => {
+    hydrated.current = true;
+    setUser(u);
+    setStatus("authenticated");
   }, []);
 
   // Old versions kept the token in localStorage: wipe it
@@ -50,9 +62,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [expire]);
 
   // The cookie is httpOnly, so the page can't peek at it: ask the server, but only
-  // in the back office. Shop visitors never trigger a session call.
+  // in the back office (and only when the dashboard did not already hand us the user).
+  // Shop visitors never trigger a session call.
   useEffect(() => {
-    if (!inAdmin || status !== "loading") return;
+    if (!inAdmin || status !== "loading" || hydrated.current) return;
     let cancelled = false;
     authService
       .me()
@@ -78,13 +91,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await authService.logout();
+    hydrated.current = false;
     setUser(null);
     setStatus("anonymous");
   }, []);
 
   const value = useMemo(
-    () => ({ user, status, login, logout }),
-    [user, status, login, logout],
+    () => ({ user, status, login, logout, hydrate }),
+    [user, status, login, logout, hydrate],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

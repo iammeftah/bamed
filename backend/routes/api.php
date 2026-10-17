@@ -21,13 +21,15 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-// Public storefront
-Route::get('categories', [CategoryController::class, 'index']);
-Route::get('products', [ProductController::class, 'index']);
-Route::get('products/{id}', [ProductController::class, 'show'])->whereNumber('id');
+// Public storefront (rate limited per IP)
+Route::middleware('throttle:120,1')->group(function () {
+    Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('products', [ProductController::class, 'index']);
+    Route::get('products/{id}', [ProductController::class, 'show'])->whereNumber('id');
+});
 
 // Back office: the Next.js proxy forwards /api/admin/* to /admin/* here
-Route::prefix('admin')->middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:120,1'])->group(function () {
     // One call that loads the whole dashboard
     Route::get('overview', [DashboardController::class, 'index']);
 

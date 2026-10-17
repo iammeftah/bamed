@@ -50,6 +50,10 @@ class ProductController extends Controller
         if ($request->boolean('featured')) {
             $query->where('featured', true);
         }
+        // Same rule as the "Nouveau" tag: created in the last 30 days
+        if ($request->boolean('new')) {
+            $query->where('created_at', '>', now()->subDays(30));
+        }
 
         match ($request->query('sort')) {
             'prix-asc' => $query->orderBy('price')->orderBy('id'),

@@ -13,13 +13,9 @@ import { productsService } from "@/services/products.service";
 /** Up to 4 categories that have products, the ones with a photo first. */
 async function getStripCategories(): Promise<StoreCategory[]> {
   try {
-    const [categories, products] = await Promise.all([
-      productsService.getCategories(),
-      productsService.getProducts({ size: 100 }),
-    ]);
-    const used = new Set(products.map((p) => p.type));
+    const categories = await productsService.getCategories();
     return categories
-      .filter((c) => used.has(c.id))
+      .filter((c) => (c.productCount ?? 0) > 0)
       .sort((a, b) => Number(Boolean(b.image)) - Number(Boolean(a.image)))
       .slice(0, 4);
   } catch {
@@ -27,14 +23,11 @@ async function getStripCategories(): Promise<StoreCategory[]> {
   }
 }
 
-/** Up to 8 products tagged "Nouveau", most recent first (same rule as the shop filter). */
+/** Up to 8 products added in the last 30 days, most recent first (filtered by the backend). */
 async function getNewProducts(): Promise<Product[]> {
   try {
-    const list = await productsService.getNewArrivals(24);
-    return list
-      .filter((p) => p.tag === "Nouveau")
-      .sort((a, b) => b.addedAt - a.addedAt)
-      .slice(0, 8);
+    const list = await productsService.getNewArrivals(8);
+    return list.filter((p) => p.tag === "Nouveau");
   } catch {
     return [];
   }

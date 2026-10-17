@@ -29,6 +29,10 @@ import { brands, type Brand } from "@/lib/products";
 const COLS = 5; // columns run from -COLS to +COLS
 const ROWS = 4; // rows run from -ROWS to +ROWS
 
+/** On phones only the centre of the dome is visible: outer tiles are not rendered. */
+const MOBILE_COLS = 3;
+const MOBILE_ROWS = 3;
+
 /** How far apart the tiles end up at the end of the scroll (1 = touching). */
 const MAX_SPREAD = 1.6;
 
@@ -76,6 +80,8 @@ type Cell = {
   row: number;
   variant: "logo" | "ghost" | "gold";
   brand: Brand;
+  /** Outside the part of the dome a phone can see */
+  farOnMobile: boolean;
 };
 
 /** Fixed layout so server and browser always draw the same tiles. */
@@ -87,7 +93,14 @@ for (let row = -ROWS; row <= ROWS; row++) {
       k % 4 === 0 ? "ghost" : k % 11 === 0 ? "gold" : "logo";
     // Offsetting each row keeps the same brand from lining up in a column
     const brand = brands[(col + COLS + (row + ROWS) * 3) % brands.length];
-    cells.push({ key: `${col}:${row}`, col, row, variant, brand });
+    cells.push({
+      key: `${col}:${row}`,
+      col,
+      row,
+      variant,
+      brand,
+      farOnMobile: Math.abs(col) > MOBILE_COLS || Math.abs(row) > MOBILE_ROWS,
+    });
   }
 }
 
@@ -131,12 +144,6 @@ function BrandMark({ brand }: { brand: Brand }) {
     />
   );
 }
-
-const tileClass = {
-  logo: "border-white/25 bg-white/[0.1]",
-  ghost: "border-white/10 bg-white/[0.025]",
-  gold: "border-gold/60 bg-gold/[0.1]",
-};
 
 export function BrandSphere({
   progress,
@@ -208,13 +215,12 @@ export function BrandSphere({
           {cells.map((c) => (
             <div
               key={c.key}
+              className={c.farOnMobile ? "max-md:hidden" : undefined}
               style={
                 { ...tileBase, "--col": c.col, "--row": c.row } as CSSProperties
               }
             >
-              <div
-                className={`flex h-full w-full items-center justify-center rounded-xl`}
-              >
+              <div className="flex h-full w-full items-center justify-center rounded-xl">
                 {c.variant !== "ghost" && <BrandMark brand={c.brand} />}
               </div>
             </div>

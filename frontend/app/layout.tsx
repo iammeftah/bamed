@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Barlow_Condensed, Manrope, Geist_Mono } from "next/font/google";
+import { Barlow_Condensed, Manrope } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { MotionProvider } from "@/components/landing/motion-provider";
 import { AuthProvider } from "@/components/auth/auth-provider";
@@ -12,11 +12,6 @@ const manrope = Manrope({
   variable: "--font-manrope",
   subsets: ["latin"],
   display: "swap",
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 const barlow = Barlow_Condensed({
@@ -32,16 +27,12 @@ export const metadata: Metadata = {
     "BAMED : la mode homme premium du quotidien, des coupes nettes pensées pour bouger avec vous.",
 };
 
-/** Categories that have products, for the footer links. */
+/** Categories that have products, for the footer links (one small request). */
 async function getFooterCategories(): Promise<{ id: string; label: string }[]> {
   try {
-    const [categories, products] = await Promise.all([
-      productsService.getCategories(),
-      productsService.getProducts({ size: 100 }),
-    ]);
-    const used = new Set(products.map((p) => p.type));
+    const categories = await productsService.getCategories();
     return categories
-      .filter((c) => used.has(c.id))
+      .filter((c) => (c.productCount ?? 0) > 0)
       .map((c) => ({ id: c.id, label: c.label }));
   } catch {
     return [];
@@ -61,7 +52,7 @@ export default async function RootLayout({
       className="motion-safe:scroll-smooth"
     >
       <body
-        className={`${manrope.variable} ${geistMono.variable} ${barlow.variable} font-sans antialiased`}
+        className={`${manrope.variable} ${barlow.variable} font-sans antialiased`}
       >
         <ThemeProvider>
           <MotionProvider>

@@ -1,6 +1,7 @@
 <?php
 // backend/bootstrap/app.php
 
+use App\Http\Middleware\EnsureActiveAdmin;
 use App\Http\Middleware\EnsureSuperAdmin;
 use App\Http\Middleware\LogApiRequest;
 use App\Models\ErrorLog;
@@ -22,8 +23,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // No web login page: guests get a 401 JSON, never a redirect
         $middleware->redirectGuestsTo(fn () => null);
 
-        // "super" = only the developer account (see routes/api.php)
-        $middleware->alias(['super' => EnsureSuperAdmin::class]);
+        // "super" = only the developer account, "active" = account not deactivated
+        $middleware->alias([
+            'super' => EnsureSuperAdmin::class,
+            'active' => EnsureActiveAdmin::class,
+        ]);
 
         // Traffic statistics for the developer dashboard
         $middleware->api(append: [LogApiRequest::class]);

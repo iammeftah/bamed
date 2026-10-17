@@ -21,7 +21,7 @@ class LoginRequest extends FormRequest
     {
         return [
             'phone' => ['required', 'string', 'regex:/^\+212[5-7]\d{8}$/'],
-            'password' => ['required', 'string'],
+            'password' => ['required', 'string', 'max:128'],
         ];
     }
 }

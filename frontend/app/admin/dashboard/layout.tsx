@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
+import { AuthHydrator } from "@/components/auth/auth-hydrator";
 import { RequireAuth } from "@/components/auth/require-auth";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { ADMIN_LOGIN } from "@/lib/auth/redirect";
@@ -19,10 +20,14 @@ export default async function DashboardLayout({
   if (!user) redirect(ADMIN_LOGIN);
 
   return (
-    <RequireAuth roles={["admin", "super_admin"]}>
-      <DashboardProvider>
-        <DashboardShell>{children}</DashboardShell>
-      </DashboardProvider>
-    </RequireAuth>
+    <>
+      {/* Outside RequireAuth on purpose: it is what makes RequireAuth see the user */}
+      <AuthHydrator user={user} />
+      <RequireAuth roles={["admin", "super_admin"]}>
+        <DashboardProvider>
+          <DashboardShell>{children}</DashboardShell>
+        </DashboardProvider>
+      </RequireAuth>
+    </>
   );
 }

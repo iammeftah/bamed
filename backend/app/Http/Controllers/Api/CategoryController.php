@@ -14,10 +14,15 @@ class CategoryController extends Controller
 {
     public function __construct(private ActivityLogger $log) {}
 
-    /** Public: GET /categories */
+    /** Public: GET /categories (with the number of active products, in one query) */
     public function index()
     {
-        return StoreCategoryResource::collection(Category::orderBy('id')->get());
+        return StoreCategoryResource::collection(
+            Category::query()
+                ->withCount(['products as active_products_count' => fn ($q) => $q->where('active', true)])
+                ->orderBy('id')
+                ->get()
+        );
     }
 
     /** Admin: GET /admin/categories */

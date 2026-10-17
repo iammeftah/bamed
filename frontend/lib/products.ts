@@ -15,6 +15,8 @@ export type StoreCategory = {
   sizeScale: import("@/lib/sizes").SizeScaleId;
   /** Optional tile photo for the home page */
   image?: string;
+  /** Number of active products (lets the site hide empty categories) */
+  productCount?: number;
 };
 
 export type Product = {

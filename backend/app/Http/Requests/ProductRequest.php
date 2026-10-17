@@ -41,8 +41,9 @@ class ProductRequest extends FormRequest
             'colors.*.name' => ['required', 'string', 'max:40'],
             'colors.*.hex' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'colors.*.images' => ['nullable', 'array', 'max:8'],
-            // Photos are URLs (uploaded through /admin/uploads): http(s) or a path on this site
-            'colors.*.images.*.src' => ['required', 'string', 'max:2048', 'regex:#^(https?://|/)#'],
+            // Photos are http(s) URLs or a path on this site. "//host/..." (protocol-relative),
+            // whitespace and backslashes are refused.
+            'colors.*.images.*.src' => ['required', 'string', 'max:2048', 'regex:#^(https?://[^\s\\\\]+|/(?!/)[^\s\\\\]*)$#'],
             'colors.*.images.*.alt' => ['nullable', 'string', 'max:200'],
         ];
 
