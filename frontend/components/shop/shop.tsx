@@ -9,6 +9,7 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { BrandPlayground } from "@/components/shop/brand-playground";
 import { OutfitBuilder } from "@/components/shop/outfit-builder";
 import { Pagination } from "@/components/shop/pagination";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
@@ -30,11 +31,11 @@ import {
   formatNumber,
   type Product,
   type ProductColor,
+  type StoreBrand,
   type StoreCategory,
 } from "@/lib/products";
 import { scaleOrder, sizeScales, type SizeScaleId } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
-import { BrandPlayground } from "./brand-playground";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -197,11 +198,13 @@ function FiltersPanel({
 export function Shop({
   products,
   categories,
+  brands = [],
   loadError = false,
   initial,
 }: {
   products: Product[];
   categories: StoreCategory[];
+  brands?: StoreBrand[];
   loadError?: boolean;
   /** Validated state read from the URL on the server */
   initial: ShopState;
@@ -605,10 +608,11 @@ export function Shop({
         </div>
       </section>
 
+      {/* Brand playground: pick pieces brand by brand to build one look */}
+      <BrandPlayground products={products} brands={brands} />
+
       {/* Outfit suggestions: shuffle between complete looks */}
       <OutfitBuilder products={products} />
-
-
 
       {/* Mobile filters sheet */}
       <AnimatePresence>

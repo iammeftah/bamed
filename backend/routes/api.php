@@ -25,6 +25,7 @@ Route::prefix('auth')->group(function () {
 // results cached 60 s), so the limit is generous: it only stops direct abuse of the API.
 Route::middleware('throttle:300,1')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
+    Route::get('brands', [BrandController::class, 'index']);
     Route::get('products', [ProductController::class, 'index']);
     Route::get('products/{id}', [ProductController::class, 'show'])->whereNumber('id');
 });
@@ -56,6 +57,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'throttle:120,1'])->group(fu
     Route::post('sales', [SaleController::class, 'store']);
 
     Route::get('logs', [LogController::class, 'index']);
+
+    Route::get('brands', [BrandController::class, 'adminIndex']);
+    Route::post('brands', [BrandController::class, 'store']);
+    Route::put('brands/{brand}', [BrandController::class, 'update']);
+    Route::delete('brands/{brand}', [BrandController::class, 'destroy']);
 
     // Developer dashboard: super admin only
     Route::prefix('system')->middleware('super')->group(function () {

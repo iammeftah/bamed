@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, X } from "lucide-react";
+import { motion } from "motion/react";
+import { X } from "lucide-react";
 import { ImagePlaceholder } from "@/components/landing/image-placeholder";
 import { Reveal } from "@/components/landing/reveal";
 import { BrandLogo } from "@/components/shop/brand-logo";
@@ -39,6 +40,9 @@ const SLOT_OF_TYPE: Record<string, Slot> = {
 };
 
 type Pick = { id: string; color: string };
+type Point = { x: number; y: number };
+
+/* ---------- A draggable piece ---------- */
 
 function PieceTile({
   product,
@@ -46,25 +50,49 @@ function PieceTile({
   picked,
   onPick,
   onColor,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
 }: {
   product: Product;
   color: string;
   picked: boolean;
   onPick: () => void;
   onColor: (name: string) => void;
+  onDragStart: () => void;
+  onDragMove: (point: Point) => void;
+  onDragEnd: (point: Point) => void;
 }) {
   const image = coverImage(product, color);
+  // A drag ends with a click event on the same element: this flag swallows it
+  const moved = useRef(false);
 
   return (
-    <div className="flex flex-col gap-2">
+    <motion.div
+      drag
+      dragSnapToOrigin
+      dragElastic={0.15}
+      dragMomentum={false}
+      whileDrag={{ scale: 1.05, zIndex: 50, cursor: "grabbing" }}
+      transition={{ type: "spring", stiffness: 400, damping: 32 }}
+      onDragStart={() => {
+        moved.current = true;
+        onDragStart();
+      }}
+      onDrag={(_, info) => onDragMove(info.point)}
+      onDragEnd={(_, info) => {
+        onDragEnd(info.point);
+        window.setTimeout(() => (moved.current = false), 0);
+      }}
+      className="relative flex cursor-grab flex-col gap-2"
+    >
       <button
         type="button"
-        onClick={onPick}
+        onClick={() => {
+          if (!moved.current) onPick();
+        }}
         aria-pressed={picked}
-        className={cn(
-          "group relative isolate block overflow-hidden rounded-xl bg-muted ring-offset-2 ring-offset-background transition-shadow",
-          picked ? "ring-2 ring-gold" : "ring-0 hover:ring-1 hover:ring-foreground/30",
-        )}
+        className="block overflow-hidden rounded-xl bg-muted"
       >
         <ImagePlaceholder
           src={image.src}
@@ -74,12 +102,11 @@ function PieceTile({
           kind="product"
           sizes="(min-width:1024px) 20vw, 45vw"
           rounded={false}
+          className={cn(
+            "pointer-events-none transition-opacity",
+            picked && "opacity-50",
+          )}
         />
-        {picked && (
-          <span className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-gold text-gold-foreground">
-            <Check className="size-4" aria-hidden />
-          </span>
-        )}
         <span className="sr-only">
           {picked ? "Retirer" : "Choisir"} {product.name}
         </span>
@@ -115,13 +142,13 @@ function PieceTile({
           </ul>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 /**
- * Playground: a line of brands. Click a brand, pick a piece (top, trousers,
- * sneakers...) from it, then jump to another brand and keep building one look.
+ * Playground: a line of brands. Click a brand, then drag a piece (top,
+ * trousers, sneakers...) into "Mon look". Switch brand and keep building.
  */
 export function BrandPlayground({
   products,
@@ -152,6 +179,11 @@ export function BrandPlayground({
   const [picks, setPicks] = useState<Partial<Record<Slot, Pick>>>({});
   const [tileColor, setTileColor] = useState<Record<string, string>>({});
 
+  // Drag state: which slot is being dragged, and is the pointer over the look
+  const [dragging, setDragging] = useState<Slot | null>(null);
+  const [over, setOver] = useState(false);
+  const lookRef = useRef<HTMLElement>(null);
+
   if (list.length === 0) return null;
 
   const brand = list.find((b) => b.id === brandId) ?? list[0];
@@ -162,6 +194,15 @@ export function BrandPlayground({
 
   const colorOf = (p: Product) => tileColor[p.id] ?? p.colors[0].name;
 
+  function isOverLook(point: Point) {
+    const r = lookRef.current?.getBoundingClientRect();
+    if (!r) return false;
+    // Motion gives page coordinates, getBoundingClientRect is viewport based
+    const x = point.x - window.scrollX;
+    const y = point.y - window.scrollY;
+    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+  }
+
   function togglePick(p: Product, s: Slot) {
     setPicks((x) => {
       if (x[s]?.id === p.id) {
@@ -171,6 +212,10 @@ export function BrandPlayground({
       }
       return { ...x, [s]: { id: p.id, color: colorOf(p) } };
     });
+  }
+
+  function dropPick(p: Product, s: Slot) {
+    setPicks((x) => ({ ...x, [s]: { id: p.id, color: colorOf(p) } }));
   }
 
   function changeColor(p: Product, s: Slot, name: string) {
@@ -207,50 +252,45 @@ export function BrandPlayground({
             </h2>
           </div>
           <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-            Choisissez une marque, prenez un haut, un bas ou des sneakers, puis
-            changez de marque pour compléter votre tenue.
+            Choisissez une marque, puis glissez un haut, un bas ou des sneakers
+            dans votre look. Changez de marque pour compléter votre tenue.
           </p>
         </Reveal>
 
-        {/* The line of brands */}
+        {/* The line of brands: centered, grayscale */}
         <nav aria-label="Marques du terrain de jeu">
-          <ul className="-mx-5 flex gap-3 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0 [scrollbar-width:none]">
+          <ul className="-mx-5 flex gap-8 overflow-x-auto px-5 pb-2 md:mx-0 md:px-0 [scrollbar-width:none]">
             {list.map((b) => {
               const on = b.id === brand.id;
-              const used = chosen.some(
-                (c) => c.product && c.product.brandId === b.id,
-              );
               return (
-                <li key={b.id} className="shrink-0">
+                <li key={b.id} className="shrink-0 first:ml-auto last:mr-auto">
                   <button
                     type="button"
                     aria-pressed={on}
                     onClick={() => setBrandId(b.id)}
-                    className="group flex w-24 flex-col items-center gap-2 md:w-28"
+                    className="group flex w-20 flex-col items-center gap-2 md:w-24"
                   >
                     <span
                       className={cn(
-                        "relative block h-16 w-full overflow-hidden rounded-xl bg-white ring-offset-2 ring-offset-background transition-all duration-300 md:h-20",
-                        on
-                          ? "ring-2 ring-gold"
-                          : "ring-1 ring-border group-hover:ring-foreground/40",
+                        "relative block h-14 w-full grayscale transition-opacity duration-300 dark:invert md:h-16",
+                        on ? "opacity-100" : "opacity-50 group-hover:opacity-100",
                       )}
                     >
-                      <BrandLogo name={b.label} logo={b.logo} sizes="112px" />
-                      {used && (
-                        <span
-                          aria-hidden
-                          className="absolute right-1.5 top-1.5 size-2 rounded-full bg-gold"
-                        />
-                      )}
+                      <BrandLogo name={b.label} logo={b.logo} sizes="96px" />
                     </span>
                     <span
                       className={cn(
-                        "w-full truncate text-center text-xs font-semibold tracking-tight transition-opacity",
+                        "relative w-full truncate pb-1.5 text-center text-xs font-semibold tracking-tight transition-opacity",
                         on ? "opacity-100" : "opacity-60 group-hover:opacity-100",
                       )}
                     >
                       {b.label}
+                      {on && (
+                        <span
+                          aria-hidden
+                          className="absolute inset-x-3 bottom-0 h-px bg-gold"
+                        />
+                      )}
                     </span>
                   </button>
                 </li>
@@ -259,7 +299,7 @@ export function BrandPlayground({
           </ul>
         </nav>
 
-        <div className="mt-8 grid items-start gap-10 lg:grid-cols-12 lg:gap-14">
+        <div className="mt-10 grid items-start gap-10 lg:grid-cols-12 lg:gap-14">
           {/* Pieces of the selected brand */}
           <div className="lg:col-span-7">
             <div
@@ -305,15 +345,23 @@ export function BrandPlayground({
                   picked={picks[activeSlot]?.id === p.id}
                   onPick={() => togglePick(p, activeSlot)}
                   onColor={(name) => changeColor(p, activeSlot, name)}
+                  onDragStart={() => setDragging(activeSlot)}
+                  onDragMove={(pt) => setOver(isOverLook(pt))}
+                  onDragEnd={(pt) => {
+                    if (isOverLook(pt)) dropPick(p, activeSlot);
+                    setDragging(null);
+                    setOver(false);
+                  }}
                 />
               ))}
             </div>
           </div>
 
-          {/* The look */}
+          {/* The look: drop zone */}
           <aside
+            ref={lookRef}
             aria-label="Votre look"
-            className="rounded-xl bg-muted p-5 md:p-6 lg:sticky lg:top-28 lg:col-span-5"
+            className="lg:sticky lg:top-28 lg:col-span-5"
           >
             <div className="flex items-center justify-between gap-3">
               <p className="font-display text-3xl font-bold uppercase leading-none">
@@ -334,21 +382,44 @@ export function BrandPlayground({
               {chosen.map(({ slot: s, pick, product }) => {
                 const color = product?.colors.find((c) => c.name === pick?.color);
                 const image = product ? coverImage(product, pick?.color) : null;
+                const target = dragging === s;
                 return (
-                  <li key={s} className="flex items-center gap-3 py-3">
-                    <div className="relative size-16 shrink-0 overflow-hidden rounded-lg bg-background">
+                  <li
+                    key={s}
+                    className={cn(
+                      "-mx-2 flex items-center gap-3 rounded-lg border border-dashed px-2 py-3 transition-colors",
+                      target
+                        ? over
+                          ? "border-gold bg-gold/10"
+                          : "border-gold/50"
+                        : "border-transparent",
+                    )}
+                  >
+                    <div className="relative size-16 shrink-0 overflow-hidden rounded-lg">
                       {product && image ? (
-                        <ImagePlaceholder
-                          src={image.src}
-                          alt={image.alt}
-                          ratio="fill"
-                          label=""
-                          kind="product"
-                          sizes="64px"
-                          rounded={false}
-                        />
+                        <motion.div
+                          key={`${product.id}-${pick?.color}`}
+                          initial={{ scale: 0.6, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 420,
+                            damping: 24,
+                          }}
+                          className="absolute inset-0"
+                        >
+                          <ImagePlaceholder
+                            src={image.src}
+                            alt={image.alt}
+                            ratio="fill"
+                            label=""
+                            kind="product"
+                            sizes="64px"
+                            rounded={false}
+                          />
+                        </motion.div>
                       ) : (
-                        <span className="absolute inset-0 flex items-center justify-center border border-dashed border-border text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        <span className="absolute inset-0 flex items-center justify-center rounded-lg border border-dashed border-border text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                           {SLOT_LABEL[s]}
                         </span>
                       )}
@@ -375,7 +446,7 @@ export function BrandPlayground({
                         </>
                       ) : (
                         <p className="text-sm text-muted-foreground">
-                          Pas encore choisi
+                          {target ? "Déposez ici" : "Pas encore choisi"}
                         </p>
                       )}
                     </div>
@@ -395,7 +466,7 @@ export function BrandPlayground({
                               return next;
                             })
                           }
-                          className="flex size-8 items-center justify-center rounded-md bg-background transition-colors hover:bg-foreground/10"
+                          className="flex size-8 items-center justify-center rounded-md transition-colors hover:bg-foreground/10"
                         >
                           <X className="size-4" aria-hidden />
                         </button>
