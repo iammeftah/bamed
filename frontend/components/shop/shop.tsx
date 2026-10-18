@@ -332,7 +332,7 @@ export function Shop({
 
     const list = products.filter((p) => {
       if (state.type !== "tous" && p.type !== state.type) return false;
-      if (state.brand !== "toutes" && p.brand !== state.brand) return false;
+      if (state.brand !== "toutes" && p.brandId !== state.brand) return false;
       if (tokens.length) {
         const hay = normalize(
           `${p.name} ${p.category} ${p.colors.map((c) => c.name).join(" ")}`,
