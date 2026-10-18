@@ -87,13 +87,17 @@ export function useSelection(): SelectedItem[] {
   return useSyncExternalStore(subscribe, snapshot, () => EMPTY);
 }
 
-export function toggleItem(item: Omit<SelectedItem, "size">) {
+export type ToggleResult = "added" | "removed" | "full";
+
+export function toggleItem(item: Omit<SelectedItem, "size">): ToggleResult {
   const list = snapshot();
   if (list.some((i) => i.key === item.key)) {
     commit(list.filter((i) => i.key !== item.key));
-  } else if (list.length < MAX_ITEMS) {
-    commit([...list, item]);
+    return "removed";
   }
+  if (list.length >= MAX_ITEMS) return "full";
+  commit([...list, item]);
+  return "added";
 }
 
 export function removeItem(key: string) {
@@ -106,4 +110,36 @@ export function setItemSize(key: string, size: string | undefined) {
 
 export function clearSelection() {
   commit([]);
+}
+
+/* ------------------------------------------------------------------ */
+/* Open / closed state of the "Ma sélection" panel, shared by the      */
+/* header heart, the toast action and the panel itself.                */
+/* ------------------------------------------------------------------ */
+
+let panelOpen = false;
+const panelListeners = new Set<() => void>();
+
+function setPanel(value: boolean) {
+  if (panelOpen === value) return;
+  panelOpen = value;
+  panelListeners.forEach((l) => l());
+}
+
+function subscribePanel(cb: () => void) {
+  panelListeners.add(cb);
+  return () => {
+    panelListeners.delete(cb);
+  };
+}
+
+export const openSelection = () => setPanel(true);
+export const closeSelection = () => setPanel(false);
+
+export function useSelectionOpen(): boolean {
+  return useSyncExternalStore(
+    subscribePanel,
+    () => panelOpen,
+    () => false,
+  );
 }

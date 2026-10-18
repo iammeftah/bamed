@@ -299,3 +299,25 @@ input[type="color"]::-moz-color-swatch {
   --ring: var(--gold);
   --success: #27a644;
 }
+
+
+
+/* width */
+::-webkit-scrollbar {
+  width: 2px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: none;
+}
+ 
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background : #c9a24b; 
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #c9a24b; 
+}

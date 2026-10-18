@@ -681,9 +681,9 @@ export function Shop({
                         className="scroll-mt-28"
                       >
                         {showHeadings && (
-                          <header className="mb-6 flex items-center gap-4 border-b border-border pb-4">
+                          <header className="mb-6 flex items-center gap-4">
                             {sec.id !== "autres" && (
-                              <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-border md:size-14">
+                              <span className="relative size-18 shrink-0 overflow-hidden rounded-full grayscale dark:invert md:size-32">
                                 <BrandLogo
                                   name={sec.label}
                                   logo={sec.logo}

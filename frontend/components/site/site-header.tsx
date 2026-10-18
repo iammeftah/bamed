@@ -10,8 +10,9 @@ import {
   useMotionValueEvent,
   useScroll,
 } from "motion/react";
-import { ArrowUpRight, Menu, Search, X } from "lucide-react";
+import { ArrowUpRight, Heart, Menu, Search, X } from "lucide-react";
 import { ThemeToggle } from "@/components/landing/theme-toggle";
+import { openSelection, useSelection } from "@/lib/selection";
 import { cn } from "@/lib/utils";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -123,6 +124,43 @@ function NavItem(props: NavItemProps) {
   );
 }
 
+/** Heart that opens "Ma sélection". The badge shows how many pieces are kept. */
+function SelectionButton({ onOpen }: { onOpen?: () => void }) {
+  const count = useSelection().length;
+
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        onOpen?.();
+        openSelection();
+      }}
+      aria-label={
+        count > 0
+          ? `Ouvrir ma sélection, ${count} article${count > 1 ? "s" : ""}`
+          : "Ouvrir ma sélection"
+      }
+      className={cn(iconBtn, "relative")}
+    >
+      <Heart className={icon} aria-hidden />
+      <AnimatePresence>
+        {count > 0 && (
+          <motion.span
+            key="badge"
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 0.25, ease }}
+            className="absolute right-0.5 top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gold px-1 text-[10px] font-bold tabular-nums leading-none text-gold-foreground sm:right-0 sm:top-0"
+          >
+            {count}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
+  );
+}
+
 export function SiteHeader() {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -209,6 +247,7 @@ export function SiteHeader() {
               >
                 <Search className={icon} aria-hidden />
               </Link>
+              <SelectionButton onOpen={close} />
               <ThemeToggle />
               <button
                 type="button"

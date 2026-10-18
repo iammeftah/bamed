@@ -5,9 +5,10 @@ import { MotionProvider } from "@/components/landing/motion-provider";
 import { AuthProvider } from "@/components/auth/auth-provider";
 import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
+import { SelectionBar } from "@/components/shop/selection-bar";
+import { Toaster } from "@/components/ui/sonner";
 import { productsService } from "@/services/products.service";
 import "./globals.css";
-import { SelectionBar } from "@/components/shop/selection-bar";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -62,6 +63,7 @@ export default async function RootLayout({
               {children}
               <SiteFooter categories={footerCategories} />
               <SelectionBar />
+              <Toaster />
             </AuthProvider>
           </MotionProvider>
         </ThemeProvider>

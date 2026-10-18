@@ -1,18 +1,25 @@
 "use client";
 
 import { Heart } from "lucide-react";
+import { toast } from "sonner";
 import { useProductColor } from "@/components/shop/product-color";
 import type { Product, ProductColor } from "@/lib/products";
 import { sortSizes } from "@/lib/sizes";
-import { itemKey, toggleItem, useSelection } from "@/lib/selection";
+import {
+  itemKey,
+  openSelection,
+  toggleItem,
+  useSelection,
+} from "@/lib/selection";
 import { cn } from "@/lib/utils";
 
 function useToggle(product: Product, color: ProductColor | undefined) {
   const items = useSelection();
   const key = itemKey(product.id, color?.name ?? "");
   const on = items.some((i) => i.key === key);
-  const toggle = () =>
-    toggleItem({
+
+  const toggle = () => {
+    const result = toggleItem({
       key,
       id: product.id,
       name: product.name,
@@ -22,10 +29,27 @@ function useToggle(product: Product, color: ProductColor | undefined) {
       price: product.price,
       sizes: sortSizes(product.sizes),
     });
+
+    const detail = color?.name || undefined;
+
+    if (result === "added") {
+      toast(`${product.name} ajouté à votre sélection`, {
+        description: detail,
+        action: { label: "Voir", onClick: openSelection },
+      });
+    } else if (result === "removed") {
+      toast(`${product.name} retiré de votre sélection`, {
+        description: detail,
+      });
+    } else {
+      toast.error("Votre sélection est pleine (30 articles maximum).");
+    }
+  };
+
   return { on, toggle };
 }
 
-/** Round heart on a product card (card has its own colour state). */
+/** Bare heart on a product card: no background, no circle. A soft shadow keeps it readable on photos. */
 export function CardSelectButton({
   product,
   color,
@@ -40,12 +64,16 @@ export function CardSelectButton({
       onClick={toggle}
       aria-pressed={on}
       aria-label={on ? "Retirer de ma sélection" : "Ajouter à ma sélection"}
-      className={cn(
-        "absolute right-2 top-2 z-10 flex size-9 items-center justify-center rounded-full bg-background/90 shadow-sm backdrop-blur transition-transform active:scale-90 sm:right-3 sm:top-3",
-        on && "text-sale",
-      )}
+      className="absolute right-1 top-1 z-10 flex size-10 items-center justify-center text-white transition-transform active:scale-90 sm:right-2 sm:top-2"
     >
-      <Heart className={cn("size-[18px]", on && "fill-current")} aria-hidden />
+      <Heart
+        strokeWidth={1.75}
+        className={cn(
+          "size-5 drop-shadow-[0_1px_3px_rgb(0_0_0/0.55)] transition-colors",
+          on && "fill-sale stroke-sale",
+        )}
+        aria-hidden
+      />
     </button>
   );
 }
