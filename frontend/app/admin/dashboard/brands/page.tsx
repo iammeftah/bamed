@@ -55,7 +55,7 @@ function BrandForm({
     e.target.value = "";
     if (!f) return;
     if (!f.type.startsWith("image/") || f.size > MAX_FILE) {
-      setError("Image invalide (JPG, PNG ou WebP, 10 Mo max).");
+      setError("Image invalide (SVG, PNG, JPG ou WebP, 10 Mo max).");
       return;
     }
     setError(null);
@@ -120,13 +120,13 @@ function BrandForm({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Idéal : fond transparent ou blanc, logo centré. Sans logo, le nom est
-          affiché.
+          SVG conseillé (net à toutes les tailles), sinon PNG, JPG ou WebP. Fond
+          transparent ou blanc, logo centré. Sans logo, le nom est affiché.
         </p>
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp"
           onChange={onPick}
           className="sr-only"
           tabIndex={-1}

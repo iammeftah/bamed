@@ -7,8 +7,10 @@
  * Every such URL is turned into the same-origin path /storage/products/<file>.
  * next.config.ts rewrites that path to the Laravel server, so next/image treats
  * it as a local image: no remotePatterns, no host matching.
+ * SVG logos are served as they are (next/image never optimizes an .svg).
  */
-const STORAGE_PATH = /^\/storage\/products\/[A-Za-z0-9_-]+\.(?:webp|jpe?g|png)$/i;
+const STORAGE_PATH =
+  /^\/storage\/products\/[A-Za-z0-9_-]+\.(?:webp|jpe?g|png|svg)$/i;
 
 export function resolveImageSrc(src: string | undefined): string | undefined {
   if (!src) return src;

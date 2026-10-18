@@ -26,9 +26,23 @@ const securityHeaders = [
 ]
 
 /**
+ * Uploaded files (photos and SVG logos). If somebody opens an SVG directly in
+ * the browser, this policy forbids scripts and everything else: the file can
+ * only be drawn. It has no effect when the file is shown inside an <img>.
+ */
+const storageHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  {
+    key: "Content-Security-Policy",
+    value: "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox",
+  },
+]
+
+/**
  * Where Laravel lives. Photos uploaded through the back office are served by
  * Laravel at /storage/products/<file>.
  * BACKEND_API_URL (server only) wins over NEXT_PUBLIC_API_URL.
+ * Rewrites are computed at BUILD time: set the variable before `next build`.
  */
 const apiOrigin = (() => {
   try {
@@ -73,7 +87,11 @@ const nextConfig: NextConfig = {
     ]
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }]
+    return [
+      { source: "/:path*", headers: securityHeaders },
+      // Listed after the catch-all so its Content-Security-Policy wins on /storage
+      { source: "/storage/:path*", headers: storageHeaders },
+    ]
   },
 }
 
