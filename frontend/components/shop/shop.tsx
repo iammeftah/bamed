@@ -9,9 +9,9 @@ import {
   SlidersHorizontal,
   X,
 } from "lucide-react";
+import { BrandLogo } from "@/components/shop/brand-logo";
 import { BrandPlayground } from "@/components/shop/brand-playground";
 import { OutfitBuilder } from "@/components/shop/outfit-builder";
-import { Pagination } from "@/components/shop/pagination";
 import { ShopProductCard } from "@/components/shop/shop-product-card";
 import {
   DropdownMenu,
@@ -21,7 +21,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  PAGE_SIZE,
+  PAGE_SIZE as SECTION_SIZE,
+  parseShopParams,
   sortOptions,
   toQueryString,
   type ShopState,
@@ -39,6 +40,9 @@ import { cn } from "@/lib/utils";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
+/** Filters are remembered here (as a query string) between visits. */
+const STORE_KEY = "bamed.shop.v1";
+
 function normalize(s: string) {
   return s.toLowerCase().normalize("NFD").replace(/\p{M}/gu, "");
 }
@@ -52,6 +56,13 @@ type SizeGroup = {
   title: string;
   hint: string;
   sizes: string[];
+};
+
+type Section = {
+  id: string;
+  label: string;
+  logo?: string;
+  items: Product[];
 };
 
 /* ---------- Filters panel (sidebar on desktop, bottom sheet on mobile) ---------- */
@@ -230,7 +241,64 @@ export function Shop({
         : Math.min(Math.max(initial.maxPrice, 100), priceCeiling),
   }));
   const [drawer, setDrawer] = useState(false);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const [restored, setRestored] = useState(false);
+  /** How many products each brand section shows (default: SECTION_SIZE) */
+  const [shown, setShown] = useState<Record<string, number>>({});
+  const skipSave = useRef(false);
+
+  // Come back with the filters of the last visit (only on a clean /boutique link)
+  useEffect(() => {
+    if (window.location.search) return;
+    try {
+      const qs = window.localStorage.getItem(STORE_KEY);
+      if (!qs) return;
+      const saved = parseShopParams(
+        Object.fromEntries(new URLSearchParams(qs)),
+        categories.map((c) => c.id),
+        brands.map((b) => b.id),
+      );
+      const hasFilters =
+        saved.type !== "tous" ||
+        saved.sizes.length > 0 ||
+        saved.colors.length > 0 ||
+        saved.maxPrice !== null ||
+        saved.saleOnly ||
+        saved.newOnly ||
+        saved.sort !== "pertinence";
+      if (!hasFilters) return;
+      skipSave.current = true;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setState({
+        ...saved,
+        query: "",
+        page: 1,
+        maxPrice:
+          saved.maxPrice === null
+            ? null
+            : Math.min(Math.max(saved.maxPrice, 100), priceCeiling),
+      });
+      setRestored(true);
+    } catch {
+      /* storage unavailable: start clean */
+    }
+    // Runs once, on arrival
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Remember the filters (not the search text) for the next visit
+  useEffect(() => {
+    if (skipSave.current) {
+      skipSave.current = false;
+      return;
+    }
+    try {
+      const qs = toQueryString({ ...state, query: "", page: 1 }, priceCeiling);
+      if (qs) window.localStorage.setItem(STORE_KEY, qs);
+      else window.localStorage.removeItem(STORE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }, [state, priceCeiling]);
 
   // Size buttons come from the size scale of the products. Numbers (40, 42...)
   // mean different things for jeans, trousers and shoes, so they only show
@@ -256,11 +324,15 @@ export function Shop({
   const sizesNeedCategory =
     state.type === "tous" && products.some((p) => p.sizeScale !== "letters");
 
-  // Any filter change goes back to page 1
-  const update = (patch: Partial<ShopState>) =>
-    setState((s) => ({ ...s, ...patch, page: patch.page ?? 1 }));
+  const update = (patch: Partial<ShopState>) => {
+    setRestored(false);
+    setShown({});
+    setState((s) => ({ ...s, ...patch, page: 1 }));
+  };
 
-  const reset = () =>
+  const reset = () => {
+    setRestored(false);
+    setShown({});
     setState((s) => ({
       ...s,
       sizes: [],
@@ -270,8 +342,11 @@ export function Shop({
       newOnly: false,
       page: 1,
     }));
+  };
 
-  const resetAll = () =>
+  const resetAll = () => {
+    setRestored(false);
+    setShown({});
     setState((s) => ({
       ...s,
       query: "",
@@ -281,13 +356,15 @@ export function Shop({
       maxPrice: null,
       saleOnly: false,
       newOnly: false,
+      sort: "pertinence",
       page: 1,
     }));
+  };
 
   // Keep the URL in sync, so a link or the back button restores this exact view
   useEffect(() => {
     const t = window.setTimeout(() => {
-      const qs = toQueryString(state, priceCeiling);
+      const qs = toQueryString({ ...state, page: 1 }, priceCeiling);
       const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
       window.history.replaceState(window.history.state, "", url);
     }, 250);
@@ -316,7 +393,6 @@ export function Shop({
     (state.saleOnly ? 1 : 0) +
     (state.newOnly ? 1 : 0);
 
-  // Search runs on the whole catalogue (all pages), then we cut it into pages
   const filtered = useMemo(() => {
     const tokens = normalize(state.query.trim()).split(/\s+/).filter(Boolean);
     const limit = state.maxPrice ?? priceCeiling;
@@ -325,7 +401,7 @@ export function Shop({
       if (state.type !== "tous" && p.type !== state.type) return false;
       if (tokens.length) {
         const hay = normalize(
-          `${p.name} ${p.category} ${p.colors.map((c) => c.name).join(" ")}`,
+          `${p.name} ${p.category} ${p.brand ?? ""} ${p.colors.map((c) => c.name).join(" ")}`,
         );
         if (!tokens.every((t) => hay.includes(t))) return false;
       }
@@ -348,14 +424,37 @@ export function Shop({
     return list;
   }, [products, state, priceCeiling]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const page = Math.min(state.page, totalPages);
-  const visible = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  // One sub-section per brand (the sort order is kept inside each section)
+  const sections = useMemo<Section[]>(() => {
+    const byBrand = new Map<string, Product[]>();
+    const noBrand: Product[] = [];
+    for (const p of filtered) {
+      if (!p.brandId) {
+        noBrand.push(p);
+        continue;
+      }
+      const list = byBrand.get(p.brandId);
+      if (list) list.push(p);
+      else byBrand.set(p.brandId, [p]);
+    }
 
-  function goToPage(n: number) {
-    setState((s) => ({ ...s, page: n }));
-    gridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
+    const out: Section[] = [];
+    for (const b of brands) {
+      const items = byBrand.get(b.id);
+      if (!items) continue;
+      out.push({ id: b.id, label: b.label, logo: b.logo, items });
+      byBrand.delete(b.id);
+    }
+    for (const [id, items] of byBrand) {
+      out.push({ id, label: items[0].brand ?? id, items });
+    }
+    if (noBrand.length) {
+      out.push({ id: "autres", label: "Autres pièces", items: noBrand });
+    }
+    return out;
+  }, [filtered, brands]);
+
+  const showHeadings = sections.length > 1 || sections[0]?.id !== "autres";
 
   const chips: { key: string; label: string; onRemove: () => void }[] = [];
   if (state.query.trim())
@@ -388,7 +487,6 @@ export function Shop({
       label: "En promotion",
       onRemove: () => update({ saleOnly: false }),
     });
-
   if (state.newOnly)
     chips.push({
       key: "new",
@@ -420,9 +518,6 @@ export function Shop({
     />
   );
 
-  const from = filtered.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
-  const to = Math.min(page * PAGE_SIZE, filtered.length);
-
   return (
     <>
       <section className="pb-10 pt-28 md:pb-14 md:pt-40">
@@ -431,8 +526,8 @@ export function Shop({
             Boutique
           </h1>
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-            Hoodies, jeans, sneakers et plus. Recherchez, filtrez par taille,
-            couleur ou prix pour trouver votre pièce.
+            Toutes nos pièces, marque par marque. Gardez vos coups de cœur
+            dans « Ma sélection » et vérifiez leur disponibilité sur WhatsApp.
           </p>
         </div>
       </section>
@@ -449,7 +544,6 @@ export function Shop({
             </div>
           )}
 
-          {/* Category nav: same look as the site header links */}
           <nav
             aria-label="Catégories"
             className="-mx-5 flex overflow-x-auto border-b border-border px-5 md:mx-0 md:px-0 [scrollbar-width:none]"
@@ -482,7 +576,6 @@ export function Shop({
             })}
           </nav>
 
-          {/* Toolbar: compact search, sort dropdown, mobile filters */}
           <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
             <label className="relative block w-full sm:w-64">
               <span className="sr-only">Rechercher dans toute la boutique</span>
@@ -495,7 +588,7 @@ export function Shop({
                 value={state.query}
                 maxLength={80}
                 onChange={(e) => update({ query: e.target.value })}
-                placeholder="Rechercher..."
+                placeholder="Rechercher un article ou une marque..."
                 className="h-10 w-full rounded-md bg-muted pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground"
               />
             </label>
@@ -535,13 +628,26 @@ export function Shop({
             </button>
           </div>
 
-          {/* Result count and active filters */}
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <p aria-live="polite" className="mr-2 text-sm text-muted-foreground">
               {filtered.length === 0
                 ? "Aucun article"
-                : `${from} à ${to} sur ${filtered.length} article${filtered.length > 1 ? "s" : ""}`}
+                : `${filtered.length} article${filtered.length > 1 ? "s" : ""}${
+                    showHeadings
+                      ? ` · ${sections.length} marque${sections.length > 1 ? "s" : ""}`
+                      : ""
+                  }`}
             </p>
+            {restored && (
+              <button
+                type="button"
+                onClick={resetAll}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-dashed border-gold px-3 text-sm font-semibold transition-colors hover:bg-gold/10"
+              >
+                Filtres de votre dernière visite · Effacer
+                <X className="size-3.5" aria-hidden />
+              </button>
+            )}
             {chips.map((c) => (
               <button
                 key={c.key}
@@ -556,36 +662,82 @@ export function Shop({
             ))}
           </div>
 
-          <div
-            ref={gridRef}
-            className="mt-8 grid scroll-mt-28 gap-10 lg:grid-cols-[260px_1fr] lg:gap-14"
-          >
+          <div className="mt-8 grid gap-10 lg:grid-cols-[260px_1fr] lg:gap-14">
             <aside className="hidden lg:block">
               <div className="sticky top-28">{filtersPanel}</div>
             </aside>
 
             <div>
-              {visible.length > 0 ? (
-                <>
-                  <div className="grid grid-cols-2 gap-x-3 gap-y-12 md:grid-cols-3 md:gap-x-4">
-                    {visible.map((p) => (
-                      <motion.div
-                        key={p.id}
-                        layout
-                        initial={{ opacity: 0, y: 12 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, ease }}
+              {sections.length > 0 ? (
+                <div className="space-y-16">
+                  {sections.map((sec) => {
+                    const limit = shown[sec.id] ?? SECTION_SIZE;
+                    const list = sec.items.slice(0, limit);
+                    const rest = sec.items.length - list.length;
+                    return (
+                      <section
+                        key={sec.id}
+                        aria-labelledby={`marque-${sec.id}`}
+                        className="scroll-mt-28"
                       >
-                        <ShopProductCard product={p} />
-                      </motion.div>
-                    ))}
-                  </div>
-                  <Pagination
-                    page={page}
-                    totalPages={totalPages}
-                    onChange={goToPage}
-                  />
-                </>
+                        {showHeadings && (
+                          <header className="mb-6 flex items-center gap-4 border-b border-border pb-4">
+                            {sec.id !== "autres" && (
+                              <span className="relative size-12 shrink-0 overflow-hidden rounded-full bg-white ring-1 ring-border md:size-14">
+                                <BrandLogo
+                                  name={sec.label}
+                                  logo={sec.logo}
+                                  sizes="56px"
+                                />
+                              </span>
+                            )}
+                            <h2
+                              id={`marque-${sec.id}`}
+                              className="font-display text-4xl font-bold uppercase leading-none md:text-5xl"
+                            >
+                              {sec.label}
+                            </h2>
+                            <span className="ml-auto text-sm tabular-nums text-muted-foreground">
+                              {sec.items.length} article
+                              {sec.items.length > 1 ? "s" : ""}
+                            </span>
+                          </header>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-x-3 gap-y-12 md:grid-cols-3 md:gap-x-4">
+                          {list.map((p) => (
+                            <motion.div
+                              key={p.id}
+                              layout
+                              initial={{ opacity: 0, y: 12 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.4, ease }}
+                            >
+                              <ShopProductCard product={p} />
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        {rest > 0 && (
+                          <div className="mt-8 text-center">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShown((x) => ({
+                                  ...x,
+                                  [sec.id]: sec.items.length,
+                                }))
+                              }
+                              className="inline-flex h-11 items-center rounded-md bg-muted px-6 text-sm font-semibold transition-colors hover:bg-foreground/10"
+                            >
+                              Afficher les {rest} autre{rest > 1 ? "s" : ""}
+                            </button>
+                          </div>
+                        )}
+                      </section>
+                    );
+                  })}
+                </div>
               ) : (
                 <div className="rounded-xl bg-muted px-6 py-16 text-center">
                   <p className="font-display text-4xl font-bold uppercase leading-none md:text-5xl">
@@ -608,13 +760,9 @@ export function Shop({
         </div>
       </section>
 
-      {/* Brand playground: pick pieces brand by brand to build one look */}
       <BrandPlayground products={products} brands={brands} />
-
-      {/* Outfit suggestions: shuffle between complete looks */}
       <OutfitBuilder products={products} />
 
-      {/* Mobile filters sheet */}
       <AnimatePresence>
         {drawer && (
           <>

@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site/site-header";
 import { SiteFooter } from "@/components/site/site-footer";
 import { productsService } from "@/services/products.service";
 import "./globals.css";
+import { SelectionBar } from "@/components/shop/selection-bar";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -60,6 +61,7 @@ export default async function RootLayout({
               <SiteHeader />
               {children}
               <SiteFooter categories={footerCategories} />
+              <SelectionBar />
             </AuthProvider>
           </MotionProvider>
         </ThemeProvider>

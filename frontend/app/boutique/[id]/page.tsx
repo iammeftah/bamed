@@ -9,6 +9,7 @@ import { formatNumber } from "@/lib/products";
 import { sizeScales, sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
 import { productsService } from "@/services/products.service";
+import { ProductSelectButton } from "@/components/shop/select-button";
 
 const ID = /^[\w-]{1,64}$/;
 
@@ -186,6 +187,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
                 </dl>
 
                 <div className="mt-8 flex flex-wrap gap-2">
+                  <ProductSelectButton product={product} />
                   <Link
                     href="/boutique"
                     className="inline-flex h-11 items-center gap-2 rounded-md bg-foreground px-5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"

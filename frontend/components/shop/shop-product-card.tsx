@@ -6,6 +6,7 @@ import { ProductMedia } from "@/components/shop/product-media";
 import { formatNumber, type Product } from "@/lib/products";
 import { sortSizes } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
+import { CardSelectButton } from "./select-button";
 
 /** The one product card of the site (shop, product page, home page). */
 export function ShopProductCard({
@@ -35,6 +36,7 @@ export function ShopProductCard({
       }}
       onPointerLeave={() => setHovering(false)}
     >
+      <CardSelectButton product={product} color={color} />
       <div className="relative isolate overflow-hidden rounded-xl bg-muted">
         <div className="zoom-img">
           <ProductMedia
