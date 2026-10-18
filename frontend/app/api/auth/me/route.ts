@@ -7,7 +7,7 @@ export async function GET() {
 
   const res = await backendFetch("/auth/me", { token });
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     await clearSessionToken();
     return fail(401, "Session expirée.");
   }

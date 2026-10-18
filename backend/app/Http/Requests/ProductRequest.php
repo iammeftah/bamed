@@ -30,7 +30,6 @@ class ProductRequest extends FormRequest
             'name' => ['required', 'string', 'max:150'],
             'sku' => ['nullable', 'string', 'max:40', Rule::unique('products', 'sku')->ignore($this->route('product'))],
             'categoryId' => ['required', 'integer', 'exists:categories,id'],
-            'brandId' => ['nullable', 'integer', 'exists:brands,id'],
             'price' => ['required', 'numeric', 'gt:0'],
             'oldPrice' => ['nullable', 'numeric', 'gt:price'],
             'cost' => ['nullable', 'numeric', 'min:0'],
@@ -42,9 +41,12 @@ class ProductRequest extends FormRequest
             'colors.*.name' => ['required', 'string', 'max:40'],
             'colors.*.hex' => ['required', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'colors.*.images' => ['nullable', 'array', 'max:8'],
-            // Photos are http(s) URLs or a path on this site. "//host/..." (protocol-relative),
-            // whitespace and backslashes are refused.
-            'colors.*.images.*.src' => ['required', 'string', 'max:2048', 'regex:#^(https?://[^\s\\\\]+|/(?!/)[^\s\\\\]*)$#'],
+            // Photos are paths on this site only: an upload (/storage/products/...) or a static image (/images/...).
+            // No external URLs, and no ".." segments.
+            'colors.*.images.*.src' => [
+                'required', 'string', 'max:2048',
+                'regex:#^/(?:storage/products|images)/(?!.*\.\.)[A-Za-z0-9._/-]+$#',
+            ],
             'colors.*.images.*.alt' => ['nullable', 'string', 'max:200'],
         ];
 
@@ -64,8 +66,6 @@ class ProductRequest extends FormRequest
             'categoryId.required' => 'Choisissez une catégorie.',
             'categoryId.integer' => 'Choisissez une catégorie.',
             'categoryId.exists' => 'Choisissez une catégorie.',
-            'brandId.exists' => 'Cette marque n\'existe pas.',
-            'brandId.integer' => 'Cette marque n\'existe pas.',
             'price.required' => 'Le prix doit être supérieur à 0.',
             'price.numeric' => 'Le prix doit être supérieur à 0.',
             'price.gt' => 'Le prix doit être supérieur à 0.',

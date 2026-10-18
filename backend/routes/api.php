@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\UploadController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\BrandController;
 
 Route::prefix('auth')->group(function () {
     Route::post('login', [AuthController::class, 'login'])->middleware('throttle:5,1');
@@ -22,16 +21,16 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-// Public storefront (rate limited per IP)
-Route::middleware('throttle:120,1')->group(function () {
+// Public storefront. The callers are the Next.js server components (one shared IP,
+// results cached 60 s), so the limit is generous: it only stops direct abuse of the API.
+Route::middleware('throttle:300,1')->group(function () {
     Route::get('categories', [CategoryController::class, 'index']);
-    Route::get('brands', [BrandController::class, 'index']);
     Route::get('products', [ProductController::class, 'index']);
     Route::get('products/{id}', [ProductController::class, 'show'])->whereNumber('id');
 });
 
 // Back office: the Next.js proxy forwards /api/admin/* to /admin/* here
-Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:120,1'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     // One call that loads the whole dashboard
     Route::get('overview', [DashboardController::class, 'index']);
 
@@ -39,11 +38,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'active', 'throttle:120,1'])
     Route::post('categories', [CategoryController::class, 'store']);
     Route::put('categories/{category}', [CategoryController::class, 'update']);
     Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
-
-    Route::get('brands', [BrandController::class, 'adminIndex']);
-    Route::post('brands', [BrandController::class, 'store']);
-    Route::put('brands/{brand}', [BrandController::class, 'update']);
-    Route::delete('brands/{brand}', [BrandController::class, 'destroy']);
 
     Route::get('products', [ProductController::class, 'adminIndex']);
     Route::post('products', [ProductController::class, 'store']);

@@ -28,14 +28,13 @@ import {
 } from "@/lib/shop-query";
 import {
   formatNumber,
-  StoreBrand,
   type Product,
   type ProductColor,
   type StoreCategory,
 } from "@/lib/products";
 import { scaleOrder, sizeScales, type SizeScaleId } from "@/lib/sizes";
 import { cn } from "@/lib/utils";
-import { BrandStrip } from "./brand-strip";
+import { BrandPlayground } from "./brand-playground";
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
@@ -198,13 +197,11 @@ function FiltersPanel({
 export function Shop({
   products,
   categories,
-  brands,
   loadError = false,
   initial,
 }: {
   products: Product[];
   categories: StoreCategory[];
-  brands: StoreBrand[];
   loadError?: boolean;
   /** Validated state read from the URL on the server */
   initial: ShopState;
@@ -220,14 +217,6 @@ export function Shop({
       }
     }
     return list;
-  }, [products]);
-
-  const brandCounts = useMemo(() => {
-    const m: Record<string, number> = {};
-    for (const p of products) {
-      if (p.brandId) m[p.brandId] = (m[p.brandId] ?? 0) + 1;
-    }
-    return m;
   }, [products]);
 
   const [state, setState] = useState<ShopState>(() => ({
@@ -284,7 +273,6 @@ export function Shop({
       ...s,
       query: "",
       type: "tous",
-      brand: "toutes",
       sizes: [],
       colors: [],
       maxPrice: null,
@@ -332,7 +320,6 @@ export function Shop({
 
     const list = products.filter((p) => {
       if (state.type !== "tous" && p.type !== state.type) return false;
-      if (state.brand !== "toutes" && p.brandId !== state.brand) return false;
       if (tokens.length) {
         const hay = normalize(
           `${p.name} ${p.category} ${p.colors.map((c) => c.name).join(" ")}`,
@@ -373,12 +360,6 @@ export function Shop({
       key: "q",
       label: `« ${state.query.trim()} »`,
       onRemove: () => update({ query: "" }),
-    });
-  if (state.brand !== "toutes")
-    chips.push({
-      key: "brand",
-      label: brands.find((b) => b.id === state.brand)?.label ?? state.brand,
-      onRemove: () => update({ brand: "toutes" }),
     });
   for (const s of state.sizes)
     chips.push({
@@ -497,13 +478,6 @@ export function Shop({
               );
             })}
           </nav>
-
-          <BrandStrip
-            brands={brands}
-            counts={brandCounts}
-            value={state.brand}
-            onChange={(brand) => update({ brand })}
-          />
 
           {/* Toolbar: compact search, sort dropdown, mobile filters */}
           <div className="mt-4 flex flex-wrap items-center gap-2 sm:justify-end">
@@ -631,8 +605,10 @@ export function Shop({
         </div>
       </section>
 
-      {/* Outfit suggestions built from the products above */}
+      {/* Outfit suggestions: shuffle between complete looks */}
       <OutfitBuilder products={products} />
+
+
 
       {/* Mobile filters sheet */}
       <AnimatePresence>
